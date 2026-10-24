@@ -1,40 +1,82 @@
-import { useEffect, useState } from 'react'
-import { applyTheme, readThemePref, saveThemePref, watchSystemTheme, type ThemePref } from './lib/theme'
+import { useEffect, type ReactNode } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './lib/auth'
+import { NotificationsProvider } from './lib/notifications'
+import { setUnauthorizedHandler } from './lib/api'
+import { ToastProvider } from './components/toast'
+import { Layout } from './components/Layout'
+import { Skeleton } from './components/ui'
+import LoginPage from './pages/LoginPage'
+import DashboardPage from './pages/DashboardPage'
+import SettingsPage from './pages/SettingsPage'
+import AdminPage from './pages/AdminPage'
+import { ForbiddenPage, NotFoundPage } from './pages/ErrorPages'
 
-const options: { value: ThemePref; label: string }[] = [
-  { value: 'light', label: 'Claro' },
-  { value: 'dark', label: 'Escuro' },
-  { value: 'system', label: 'Sistema' },
-]
+function SessionWatcher() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { setUser } = useAuth()
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null)
+      const next = encodeURIComponent(location.pathname + location.search)
+      navigate(`/login?expirou=1&next=${next}`, { replace: true })
+    })
+  }, [navigate, location, setUser])
+  return null
+}
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth()
+  const location = useLocation()
+  if (loading)
+    return (
+      <div className="p-8" role="status" aria-label="Carregando">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="mt-6 h-40 w-full max-w-xl" />
+      </div>
+    )
+  if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />
+  return <>{children}</>
+}
+
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
+  return user?.role === 'admin' ? <>{children}</> : <ForbiddenPage />
+}
 
 export default function App() {
-  const [pref, setPref] = useState<ThemePref>(readThemePref)
-
-  useEffect(() => {
-    applyTheme(pref)
-    saveThemePref(pref)
-    return watchSystemTheme(() => pref)
-  }, [pref])
-
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <h1 className="text-2xl font-semibold">IG Automatic Tools</h1>
-      <div className="mt-6 max-w-md rounded-card border border-card-border bg-surface p-5">
-        <p className="text-muted">Hub de ferramentas para criadores de conteúdo no Instagram.</p>
-        <div role="radiogroup" aria-label="Tema" className="mt-4 inline-flex rounded-control bg-raised p-1">
-          {options.map((o) => (
-            <button
-              key={o.value}
-              role="radio"
-              aria-checked={pref === o.value}
-              onClick={() => setPref(o.value)}
-              className={`h-8 rounded-[6px] px-3 text-sm ${pref === o.value ? 'bg-surface font-medium text-ink' : 'text-muted'}`}
+    <BrowserRouter basename="/ig">
+      <AuthProvider>
+        <ToastProvider>
+          <SessionWatcher />
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              element={
+                <RequireAuth>
+                  <NotificationsProvider>
+                    <Layout />
+                  </NotificationsProvider>
+                </RequireAuth>
+              }
             >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </main>
+              <Route index element={<DashboardPage />} />
+              <Route path="configuracoes" element={<SettingsPage />} />
+              <Route
+                path="admin"
+                element={
+                  <RequireAdmin>
+                    <AdminPage />
+                  </RequireAdmin>
+                }
+              />
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
+          </Routes>
+        </ToastProvider>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
