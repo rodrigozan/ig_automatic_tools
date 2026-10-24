@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { lazy, useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
 import { NotificationsProvider } from './lib/notifications'
@@ -8,20 +8,22 @@ import { ToastProvider } from './components/toast'
 import { Layout } from './components/Layout'
 import { Skeleton } from './components/ui'
 import LoginPage from './pages/LoginPage'
-import DashboardPage from './pages/DashboardPage'
-import SettingsPage from './pages/SettingsPage'
-import AdminPage from './pages/AdminPage'
-import AccountsPage from './pages/AccountsPage'
-import MediaPage from './pages/MediaPage'
-import PostsPage from './pages/PostsPage'
-import PostEditorPage from './pages/PostEditorPage'
-import NotificationsPage from './pages/NotificationsPage'
-import BatchesPage, { BatchDetailPage } from './pages/BatchesPage'
-import BatchNewPage from './pages/BatchNewPage'
-import AutomationsPage from './pages/AutomationsPage'
-import AutomationEditorPage from './pages/AutomationEditorPage'
-import AutomationDetailPage from './pages/AutomationDetailPage'
 import { ForbiddenPage, NotFoundPage } from './pages/ErrorPages'
+
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+const AccountsPage = lazy(() => import('./pages/AccountsPage'))
+const MediaPage = lazy(() => import('./pages/MediaPage'))
+const PostsPage = lazy(() => import('./pages/PostsPage'))
+const PostEditorPage = lazy(() => import('./pages/PostEditorPage'))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const BatchesPage = lazy(() => import('./pages/BatchesPage'))
+const BatchDetailPage = lazy(() => import('./pages/BatchesPage').then((m) => ({ default: m.BatchDetailPage })))
+const BatchNewPage = lazy(() => import('./pages/BatchNewPage'))
+const AutomationsPage = lazy(() => import('./pages/AutomationsPage'))
+const AutomationEditorPage = lazy(() => import('./pages/AutomationEditorPage'))
+const AutomationDetailPage = lazy(() => import('./pages/AutomationDetailPage'))
 
 function SessionWatcher() {
   const navigate = useNavigate()

@@ -105,3 +105,29 @@ Feito:
 - Testes (75 no total): contagens do admin, exclusão completa da conta sem tocar em outro usuário, aviso lido há 30 dias, TTL do webhook, mídia publicada, dados do painel.
 
 Pendente (**Ação do Rod**): percorrer todos os caminhos do documento 04 nos dois temas e no celular.
+
+## Etapa 7: Erros, segurança e velocidade
+
+Situação: concluída no ambiente de desenvolvimento. Backup real e inspetor no VPS pendentes (**Ação do Rod**).
+
+Feito:
+- Limite de tentativas (`express-rate-limit`): login e conexão do Instagram (30 a cada 15 minutos), envios de arquivo (60 por minuto), escritas na API (120 por minuto), webhook (1.200 por minuto).
+- Cabeçalhos de segurança (`helmet`): CSP só com a própria origem para scripts (o script de tema saiu do HTML para `theme-init.js`), `frame-ancestors 'none'`, `nosniff`, sem `x-powered-by`.
+- Validação de entrada com `zod` em todas as rotas que recebem dados, JSON malformado devolve 400, id malformado devolve 404, campos extras são recusados.
+- Tamanho máximo de upload (`MAX_UPLOAD_MB`, padrão 1.024) e de JSON (1 MB). Erros vão para o `journalctl` (saída padrão do serviço).
+- Revisão de segurança: tokens nunca aparecem em log nem em resposta (com teste), cookie com os atributos certos (teste da etapa 2), filtro por `userId` em toda consulta (testes de acesso de outro usuário em cada etapa), assinatura do webhook (teste da etapa 5), rota pública de mídia sem listar pastas nem aceitar caminho relativo (teste da etapa 3).
+- Backup: `deploy/backup.sh` (`mongodump` compactado, 7 dias no VPS, cópia por `rclone` no remoto criptografado, padrão `igtools-crypt:`), `deploy/restore.sh` e `deploy/ig-backup.service` + `deploy/ig-backup.timer` (todo dia às 04:13). Backup e restauração testados num banco de teste com `mongodump` e `mongorestore` 100.10.
+- Acessibilidade: verificação com `axe-core` (WCAG 2 A e AA e boas práticas) em 14 telas, nos dois temas, no computador e no celular, sem falhas depois das correções (cabeçalho como landmark, tabela rolável focável). Contraste aprovado pelo `axe`. Alvos de toque de 44 px no celular, foco visível de 2 px na cor de marca, alternativas a arrastar e movimento reduzido já aplicados.
+- Velocidade: teste confirma que as consultas do agendador, da fila de publicações, do limite de 24 horas, da expiração de conversas, do limite por hora e da limpeza das DMs usam índice. Telas carregadas sob demanda: o pacote inicial caiu de 426 KB (130 KB gzip) para 236 KB (74 KB gzip).
+- Testes: 80 no total.
+
+Pendente (**Ação do Rod**):
+- Instalar `mongodb-database-tools` e `rclone` no VPS, configurar o remoto do Drive e o remoto `crypt` por cima dele com o nome `igtools-crypt` (`rclone config`), guardar a senha do `crypt` no cofre e ativar o timer:
+
+```
+cp deploy/ig-backup.service deploy/ig-backup.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now ig-backup.timer
+```
+
+- Rodar o inspetor da skill de design no VPS (comando do plano) e conferir que não há FAIL.

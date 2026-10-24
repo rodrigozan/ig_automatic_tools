@@ -22,6 +22,7 @@ import { minuteTasks } from "./services/scheduler";
 import { cleanupTasks } from "./services/cleanup";
 import { dashboardRouter } from "./routes/dashboard";
 import { errorHandler } from "./lib/errors";
+import { securityHeaders, loginLimiter, writeLimiter, uploadLimiter, webhookLimiter } from "./middleware/security";
 
 postFinalHooks.push(async (post) => {
   if (post.batchId) await completeBatchIfDone(post.batchId);
@@ -41,10 +42,16 @@ export function createApp() {
   app.disable("x-powered-by");
   app.set("trust proxy", "loopback");
 
+  app.use(securityHeaders);
+
   const api = Router();
+  api.use("/webhooks", webhookLimiter);
   api.use(webhooksRouter);
   api.use(express.json({ limit: "1mb" }));
   api.use(cookieParser());
+  api.use(["/auth/google", "/auth/facebook", "/instagram/connect", "/instagram/callback"], loginLimiter);
+  api.use("/media", uploadLimiter);
+  api.use(writeLimiter);
   api.use(healthRouter);
   api.use(authRouter);
   api.use(usersRouter);

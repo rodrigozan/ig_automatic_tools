@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { Suspense, useEffect, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Bell, CalendarDays, Film, Images, Camera, LayoutDashboard, Layers, LogOut, Menu, MessageCircle, Settings, Shield, WifiOff, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { NotificationBell } from './NotificationBell'
 import { ErrorBoundary } from './ErrorBoundary'
+import { Skeleton } from './ui'
 
 type NavItem = { to: string; label: string; Icon: typeof Bell; admin?: boolean }
 
@@ -141,12 +142,23 @@ export function Layout({ children }: { children?: ReactNode }) {
             <WifiOff size={16} aria-hidden /> Sem conexão. Tentando de novo...
           </div>
         )}
-        <div className="hidden h-12 items-center justify-end px-8 md:flex">
+        <header className="hidden h-12 items-center justify-end px-8 md:flex">
           <NotificationBell />
-        </div>
+        </header>
         <main id="conteudo" className="mx-auto max-w-[1280px] px-4 pt-8 pb-16 md:px-8 md:pt-2">
           <fieldset disabled={!online} className="contents">
-            <ErrorBoundary resetKey={location.pathname}>{children ?? <Outlet />}</ErrorBoundary>
+            <ErrorBoundary resetKey={location.pathname}>
+              <Suspense
+                fallback={
+                  <div role="status" aria-label="Carregando">
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="mt-6 h-40 w-full" />
+                  </div>
+                }
+              >
+                {children ?? <Outlet />}
+              </Suspense>
+            </ErrorBoundary>
           </fieldset>
         </main>
       </div>

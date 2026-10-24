@@ -121,7 +121,7 @@ export default function AdminPage() {
             <ErrorCard onRetry={users.reload} />
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de usuários">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted">
