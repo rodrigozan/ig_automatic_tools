@@ -74,3 +74,22 @@ Feito:
 - Testes (56 no total): todo dia e dias da semana, fuso e horário de verão (America/New_York), horários sem antecedência, horário fixo, reordenação, mais vídeos que horários na semana, preview sem gravar, criação, validações, cancelamento sem tocar nas publicadas, conclusão do lote.
 
 Pendente (**Ação do Rod**): subir 6 vídeos, confirmar um lote em 3 dias da semana e conferir a fila e a publicação do primeiro.
+
+## Etapa 5: Automação de DM
+
+Situação: código concluído e testado. Teste real pendente (**Ação do Rod**).
+
+Feito:
+- API: modelos `DmAutomation`, `DmConversation`, `DmMessage` e `WebhookEvent` com os índices do documento 03 (inclusive o único em `automationId` e `igScopedUserId` e a expiração de 30 dias do evento), rotas de automações, conversas e mensagens.
+- Webhook `POST /webhooks/instagram`: confere `X-Hub-Signature-256` com `INSTAGRAM_APP_SECRET`, grava o `WebhookEvent` (ignora repetido), responde 200 e processa depois.
+- Gatilho de comentário: alvo e palavra-chave (contém ou exata, sem diferenciar maiúsculas), uma vez por pessoa por automação, resposta privada ao comentário dentro de 7 dias, ignora comentários da própria conta.
+- Primeira mensagem conforme a verificação 3 (`DM_FIRST_STEP_BUTTONS`): sem botão, vai só em texto com "Responda esta mensagem para continuar." e, quando a pessoa responde, o app envia o mesmo passo com os botões; com botão, vai direto com os botões.
+- Clique de botão envia o passo seguinte; sem passo seguinte, a conversa conclui. Texto livre é guardado sem resposta. Falha de envio: mensagem e conversa `failed` e Aviso `dm_failed`. Janela vencida: conversa `expired` (tarefa a cada minuto).
+- Limite de 750 respostas privadas por hora por conta (`DM_PRIVATE_REPLY_LIMIT_HOUR`): Aviso `limit_near` a partir de 80% e fila para o excedente, enviada quando a hora libera.
+- Limpeza diária do texto das mensagens após 90 dias, mantendo os registros. Desconectar a conta desativa as automações. Conversas em andamento seguem o fluxo da época em que começaram (cópia do fluxo na conversa).
+- Frontend: Automações (lista, interruptor, apagar), Editor (conta, alvo com grade de posts, palavras-chave e modo, passos com mensagem e até 3 botões de resposta ou link, destino de cada botão, reordenar por alça e por botões, aviso quando a conta não aceita botão no primeiro passo), Detalhe (números, conversas com passo, se respondeu, situação, "fora da janela", "limite por hora" e mensagens enquanto não passarem de 90 dias).
+- Testes (69 no total): assinatura válida e inválida, evento repetido, palavra-chave contém e exata, uma vez por pessoa, alvo, passo seguinte, texto livre, primeira mensagem com e sem botão, falha de envio, expiração da janela, fila do limite por hora, limpeza dos 90 dias, admin sem acesso ao texto, editar, desativar, desconectar e apagar.
+
+Pendente (**Ação do Rod**): com a conta de teste, comentar a palavra-chave, receber a DM, clicar no botão, receber o passo seguinte e comentar de novo sem receber nada.
+
+Observação: foram acrescentados à Conversa de DM os campos `flow` (cópia do fluxo), `buttonsPending`, `privateReplySentAt` e `queued`, e o estado `queued` à Mensagem de DM, para atender às regras da primeira mensagem sem botão e do limite por hora.

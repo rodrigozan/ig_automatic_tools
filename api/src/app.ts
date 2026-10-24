@@ -15,10 +15,24 @@ import { postsRouter } from "./routes/posts";
 import { notificationsRouter } from "./routes/notifications";
 import { batchesRouter, completeBatchIfDone } from "./routes/batches";
 import { postFinalHooks } from "./services/publisher";
+import { automationsRouter } from "./routes/automations";
+import { disconnectHooks } from "./services/accounts";
+import { deactivateAutomationsOf, expireConversations, processQueuedReplies, purgeOldDmText } from "./services/dm";
+import { minuteTasks } from "./services/scheduler";
+import { cleanupTasks } from "./services/cleanup";
 import { errorHandler } from "./lib/errors";
 
 postFinalHooks.push(async (post) => {
   if (post.batchId) await completeBatchIfDone(post.batchId);
+});
+
+disconnectHooks.push(deactivateAutomationsOf);
+minuteTasks.push(async (now) => {
+  await expireConversations(now);
+  await processQueuedReplies(now);
+});
+cleanupTasks.push(async (now) => {
+  await purgeOldDmText(now);
 });
 
 export function createApp() {
@@ -38,6 +52,7 @@ export function createApp() {
   api.use(mediaRouter);
   api.use(postsRouter);
   api.use(batchesRouter);
+  api.use(automationsRouter);
   api.use(notificationsRouter);
   api.use((_req, res) => {
     res.status(404).json({ error: "not_found", message: "Rota não encontrada." });

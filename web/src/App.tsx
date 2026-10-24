@@ -18,6 +18,9 @@ import PostEditorPage from './pages/PostEditorPage'
 import NotificationsPage from './pages/NotificationsPage'
 import BatchesPage, { BatchDetailPage } from './pages/BatchesPage'
 import BatchNewPage from './pages/BatchNewPage'
+import AutomationsPage from './pages/AutomationsPage'
+import AutomationEditorPage from './pages/AutomationEditorPage'
+import AutomationDetailPage from './pages/AutomationDetailPage'
 import { ForbiddenPage, NotFoundPage } from './pages/ErrorPages'
 
 function SessionWatcher() {
@@ -81,6 +84,10 @@ export default function App() {
               <Route path="lotes" element={<BatchesPage />} />
               <Route path="lotes/novo" element={<BatchNewPage />} />
               <Route path="lotes/:id" element={<BatchDetailPage />} />
+              <Route path="automacoes" element={<AutomationsPage />} />
+              <Route path="automacoes/nova" element={<AutomationEditorPage />} />
+              <Route path="automacoes/:id" element={<AutomationDetailPage />} />
+              <Route path="automacoes/:id/editar" element={<AutomationEditorPage key="edit" />} />
               <Route path="avisos" element={<NotificationsPage />} />
               <Route path="configuracoes" element={<SettingsPage />} />
               <Route

@@ -81,3 +81,41 @@ export type Batch = {
   createdAt: string
   posts?: Post[]
 }
+
+export type DmButton = { label: string; type: 'postback' | 'url'; url?: string; nextStepId?: string | null }
+export type DmStep = { id: string; text: string; buttons: DmButton[] }
+
+export type Automation = {
+  id: string
+  accountId: string
+  name: string
+  target: 'specific_post' | 'any_post'
+  igMediaId?: string
+  keywords: string[]
+  matchMode: 'contains' | 'exact'
+  startStepId: string
+  steps: DmStep[]
+  active: boolean
+  createdAt: string
+  updatedAt: string
+  stats?: Record<string, number>
+}
+
+export type Conversation = {
+  id: string
+  followerUsername?: string
+  igScopedUserId: string
+  currentStepId: string
+  status: 'active' | 'completed' | 'expired' | 'failed'
+  queued: boolean
+  buttonsPending: boolean
+  windowExpiresAt: string
+  startedAt: string
+  completedAt?: string
+  replied: boolean
+  messages: { in: number; out: number }
+}
+
+export type DmMessageItem = { id: string; direction: 'in' | 'out'; text: string | null; textExpired: boolean; stepId?: string; status: string; error?: string; createdAt: string }
+
+export type IgPost = { id: string; caption?: string; mediaType: string; thumbnailUrl?: string; mediaUrl?: string; permalink?: string; timestamp?: string }
