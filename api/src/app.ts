@@ -20,6 +20,7 @@ import { disconnectHooks } from "./services/accounts";
 import { deactivateAutomationsOf, expireConversations, processQueuedReplies, purgeOldDmText } from "./services/dm";
 import { minuteTasks } from "./services/scheduler";
 import { cleanupTasks } from "./services/cleanup";
+import { dashboardRouter } from "./routes/dashboard";
 import { errorHandler } from "./lib/errors";
 
 postFinalHooks.push(async (post) => {
@@ -53,6 +54,7 @@ export function createApp() {
   api.use(postsRouter);
   api.use(batchesRouter);
   api.use(automationsRouter);
+  api.use(dashboardRouter);
   api.use(notificationsRouter);
   api.use((_req, res) => {
     res.status(404).json({ error: "not_found", message: "Rota não encontrada." });

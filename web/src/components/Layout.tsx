@@ -4,6 +4,7 @@ import { Bell, CalendarDays, Film, Images, Camera, LayoutDashboard, Layers, LogO
 import { useAuth } from '../lib/auth'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { NotificationBell } from './NotificationBell'
+import { ErrorBoundary } from './ErrorBoundary'
 
 type NavItem = { to: string; label: string; Icon: typeof Bell; admin?: boolean }
 
@@ -145,7 +146,7 @@ export function Layout({ children }: { children?: ReactNode }) {
         </div>
         <main id="conteudo" className="mx-auto max-w-[1280px] px-4 pt-8 pb-16 md:px-8 md:pt-2">
           <fieldset disabled={!online} className="contents">
-            {children ?? <Outlet />}
+            <ErrorBoundary resetKey={location.pathname}>{children ?? <Outlet />}</ErrorBoundary>
           </fieldset>
         </main>
       </div>

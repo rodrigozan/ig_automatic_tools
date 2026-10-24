@@ -93,3 +93,15 @@ Feito:
 Pendente (**Ação do Rod**): com a conta de teste, comentar a palavra-chave, receber a DM, clicar no botão, receber o passo seguinte e comentar de novo sem receber nada.
 
 Observação: foram acrescentados à Conversa de DM os campos `flow` (cópia do fluxo), `buttonsPending`, `privateReplySentAt` e `queued`, e o estado `queued` à Mensagem de DM, para atender às regras da primeira mensagem sem botão e do limite por hora.
+
+## Etapa 6: Painel, avisos e o resto das funções
+
+Situação: código concluído e testado. Percurso completo pendente (**Ação do Rod**).
+
+Feito:
+- API: `GET /admin/users` com contagens (contas, publicações, publicadas, automações, conversas) sem o texto das DMs; `DELETE /users/me` apaga tokens (cancelando a inscrição do webhook), arquivos, mídias, publicações, lotes, automações, conversas, mensagens, avisos e o usuário; `GET /dashboard` (publicações da semana, próximas 24 horas, falhas, contas conectadas e a reconectar, avisos não lidos, próximas publicações).
+- Regras de exclusão com teste: aviso apagado 30 dias depois de lido, evento de webhook expira em 30 dias pelo índice TTL, mídia publicada perde o arquivo e fica com `deletedAt`.
+- Frontend: Painel completo (faixa de números, calendário da semana, painel lateral de 384px com próximas publicações e avisos, cartão "Conecte sua conta do Instagram"), Configurações completas (excluir conta digitando o e-mail), Admin com contagens, erros gerais (500 por tela e por falha de renderização com "Tentar de novo", sem conexão, 401 com retorno à tela anterior, 403, 404).
+- Testes (75 no total): contagens do admin, exclusão completa da conta sem tocar em outro usuário, aviso lido há 30 dias, TTL do webhook, mídia publicada, dados do painel.
+
+Pendente (**Ação do Rod**): percorrer todos os caminhos do documento 04 nos dois temas e no celular.
