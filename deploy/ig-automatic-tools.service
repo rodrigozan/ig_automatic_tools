@@ -1,0 +1,19 @@
+[Unit]
+Description=IG Automatic Tools API
+After=network-online.target mongod.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/ig_automatic_tools/api
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node dist/server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ig-automatic-tools
+
+[Install]
+WantedBy=multi-user.target
