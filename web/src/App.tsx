@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
 import { NotificationsProvider } from './lib/notifications'
+import { AccountsProvider } from './lib/accounts'
 import { setUnauthorizedHandler } from './lib/api'
 import { ToastProvider } from './components/toast'
 import { Layout } from './components/Layout'
@@ -10,6 +11,11 @@ import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import SettingsPage from './pages/SettingsPage'
 import AdminPage from './pages/AdminPage'
+import AccountsPage from './pages/AccountsPage'
+import MediaPage from './pages/MediaPage'
+import PostsPage from './pages/PostsPage'
+import PostEditorPage from './pages/PostEditorPage'
+import NotificationsPage from './pages/NotificationsPage'
 import { ForbiddenPage, NotFoundPage } from './pages/ErrorPages'
 
 function SessionWatcher() {
@@ -57,12 +63,20 @@ export default function App() {
               element={
                 <RequireAuth>
                   <NotificationsProvider>
-                    <Layout />
+                    <AccountsProvider>
+                      <Layout />
+                    </AccountsProvider>
                   </NotificationsProvider>
                 </RequireAuth>
               }
             >
               <Route index element={<DashboardPage />} />
+              <Route path="contas" element={<AccountsPage />} />
+              <Route path="midias" element={<MediaPage />} />
+              <Route path="publicacoes" element={<PostsPage />} />
+              <Route path="publicacoes/nova" element={<PostEditorPage />} />
+              <Route path="publicacoes/:id" element={<PostEditorPage key="edit" />} />
+              <Route path="avisos" element={<NotificationsPage />} />
               <Route path="configuracoes" element={<SettingsPage />} />
               <Route
                 path="admin"

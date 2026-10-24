@@ -27,3 +27,13 @@ export const config = {
 };
 
 export const isProduction = config.env === "production";
+
+export const limits = {
+  publishPer24h: Number(env.IG_PUBLISH_LIMIT_24H ?? 50),
+  privateRepliesPerHour: Number(env.DM_PRIVATE_REPLY_LIMIT_HOUR ?? 750),
+  nearRatio: 0.8,
+  firstStepButtons: env.DM_FIRST_STEP_BUTTONS === "true",
+  maxUploadMb: Number(env.MAX_UPLOAD_MB ?? 1024),
+  containerPollMs: Number(env.IG_CONTAINER_POLL_MS ?? 5000),
+  containerPollMax: Number(env.IG_CONTAINER_POLL_MAX ?? 120),
+};

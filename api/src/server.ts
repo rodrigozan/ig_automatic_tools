@@ -1,6 +1,7 @@
 import { createApp } from "./app";
 import { config } from "./config";
 import { connectDb } from "./db";
+import { startScheduler } from "./services/scheduler";
 
 async function main() {
   await connectDb(config.dbUri);
@@ -8,6 +9,7 @@ async function main() {
   app.listen(config.port, config.host, () => {
     console.log(`ig-automatic-tools escutando em http://${config.host}:${config.port}`);
   });
+  await startScheduler();
 }
 
 main().catch((err) => {

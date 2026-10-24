@@ -1,5 +1,6 @@
 import { Camera } from 'lucide-react'
-import { Button, Card, PageHeader } from '../components/ui'
+import { Card, PageHeader } from '../components/ui'
+import { ConnectButton } from './AccountsPage'
 import { useAuth } from '../lib/auth'
 
 export default function DashboardPage() {
@@ -11,9 +12,7 @@ export default function DashboardPage() {
         <Camera size={20} className="text-brand" aria-hidden />
         <h2 className="text-lg font-semibold">Conecte sua conta do Instagram</h2>
         <p className="text-muted">Conecte uma conta profissional (Creator ou Business) para agendar publicações e automatizar DMs.</p>
-        <Button variant="primary" disabled title="Disponível na próxima etapa">
-          Conectar
-        </Button>
+        <ConnectButton label="Conectar" />
       </Card>
     </div>
   )

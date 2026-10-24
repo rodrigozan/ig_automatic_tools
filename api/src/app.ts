@@ -9,6 +9,10 @@ import { publicMediaRouter } from "./routes/publicMedia";
 import { authRouter } from "./routes/auth";
 import { usersRouter } from "./routes/users";
 import { adminRouter } from "./routes/admin";
+import { instagramRouter } from "./routes/instagram";
+import { mediaRouter } from "./routes/media";
+import { postsRouter } from "./routes/posts";
+import { notificationsRouter } from "./routes/notifications";
 import { errorHandler } from "./lib/errors";
 
 export function createApp() {
@@ -24,6 +28,10 @@ export function createApp() {
   api.use(authRouter);
   api.use(usersRouter);
   api.use(adminRouter);
+  api.use(instagramRouter);
+  api.use(mediaRouter);
+  api.use(postsRouter);
+  api.use(notificationsRouter);
   api.use((_req, res) => {
     res.status(404).json({ error: "not_found", message: "Rota não encontrada." });
   });
@@ -35,7 +43,7 @@ export function createApp() {
 
   if (fs.existsSync(config.webDist)) {
     root.use(express.static(config.webDist, { index: false, dotfiles: "deny" }));
-    root.get(/^\/(?!api\/|public\/).*/, (_req, res) => {
+    root.get(/^\/(?!(ig\/)?(api|public)(\/|$)).*/, (_req, res) => {
       res.sendFile(path.join(config.webDist, "index.html"));
     });
   }

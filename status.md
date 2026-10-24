@@ -44,3 +44,22 @@ db.createUser({ user: "igtools", pwd: "<senha>", roles: [{ role: "readWrite", db
 - Credenciais OAuth do Google com retorno em `PUBLIC_BASE_URL/api/auth/google/callback`; Login do Facebook com retorno em `PUBLIC_BASE_URL/api/auth/facebook/callback`.
 - `ADMIN_EMAIL`, `JWT_SECRET` e `TOKEN_ENC_KEY` (`openssl rand -base64 32`) no `api/.env`.
 - Entrar com Google e Facebook, convidar um e-mail, desativar e conferir o bloqueio.
+
+## Etapa 3: Publicação agendada
+
+Situação: código concluído e testado. Publicação real pendente (**Ação do Rod**).
+
+Feito:
+- API: conexão pelo login do Instagram (`/instagram/connect` e `/instagram/callback`, com `state`, troca por token de longa duração cifrado, recusa de conta pessoal e de conta já ligada a outro usuário), leitura do limite real de publicações (`content_publishing_limit`), inscrição nos webhooks `comments`, `messages` e `messaging_postbacks` ao conectar e cancelamento ao desconectar, `GET /instagram/accounts` (com uso do limite de 24 horas), `GET /instagram/accounts/:id/media`, `DELETE /instagram/accounts/:id` (apaga o token, cancela pendentes, mantém histórico).
+- Renovação diária dos tokens que vencem em até 10 dias; falha a menos de 3 dias do fim gera Aviso `token_expiring`; vencido vira `expired`. Erro 190 da Meta na publicação também marca `expired`.
+- Mídia: `POST /media` (multipart, até 50 arquivos, limite `MAX_UPLOAD_MB`), `GET /media` (filtros), `DELETE /media/:id` (bloqueia mídia em publicação pendente), leitura com `ffprobe`, conversão com `ffmpeg` só quando necessário (imagem para JPEG, até 1440 px e proporção 4:5 a 1,91:1; vídeo para MP4 H.264/AAC, yuv420p, até 60 fps e 1920 px), fila sequencial retomada no reinício, rota pública por `publicToken`.
+- Publicação: `GET`, `POST`, `PATCH` e `DELETE` em `/posts`, validações do documento 04, rascunho, reagendamento de `failed` zera as tentativas.
+- Agendador (`node-cron`, a cada minuto): publica post, reel e carrossel, espera o contêiner ficar pronto, grava `igMediaId`, `permalink` e `publishedAt`, apaga o arquivo; 3 tentativas com 5 minutos; `failed` com Aviso; espera a conversão; no limite da Meta espera a janela sem falhar e avisa perto do limite (80%); no reinício, recupera atrasadas em até 1 hora e falha as demais com Aviso.
+- Avisos: `GET /notifications`, `PATCH /notifications/:id/read`, `DELETE /notifications/:id`.
+- Limpeza diária: mídia nunca agendada (7 dias), arquivo de publicação cancelada ou com falha (7 dias), aviso lido (30 dias).
+- Frontend: Contas (conectar, reconectar, desconectar com confirmação), Mídias (envio com progresso por arquivo, tentar de novo, filtros, apagar), Publicações (lista com filtros e calendário da semana), Nova e Editar publicação (biblioteca, ordem do carrossel com botões, prévia, legenda com contador, data e hora no fuso, rascunho, cancelar, ação fixa no rodapé, confirmação ao voltar), Avisos (tela e sino), faixa "Reconecte @usuario", aviso de limite.
+- Testes (47 no total): validações, máquina de estados, contêineres de post, reel e carrossel, 3 tentativas com 5 minutos, `failed` com Aviso, token inválido, espera da conversão, limite da Meta, tolerância de 59 e 61 minutos, conversão real com `ffmpeg`, rota pública, conexão e desconexão, renovação de token, limpeza.
+
+Pendente (**Ação do Rod**): conectar a conta Creator e publicar de verdade um post de imagem, um reel e um carrossel de 3 itens; agendar um vídeo fora do formato; forçar uma falha.
+
+Observação: o campo `accessTokenEnc` deixou de ser obrigatório e foi criado `disconnectedAt` na Conta do Instagram, para apagar o token na desconexão mantendo o histórico (documento 03).

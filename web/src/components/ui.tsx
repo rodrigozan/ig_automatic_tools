@@ -70,22 +70,22 @@ export function Field({ label, error, hint, children }: FieldProps) {
 }
 
 const controlCls =
-  'w-full rounded-control border border-control bg-surface px-3 text-sm text-ink placeholder:text-faint disabled:opacity-50 aria-[invalid=true]:border-negative'
+  'rounded-control border border-control bg-surface px-3 text-sm text-ink placeholder:text-faint disabled:opacity-50 aria-[invalid=true]:border-negative'
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className = '', ...rest }, ref) {
-  return <input ref={ref} className={`h-10 ${controlCls} ${className}`} {...rest} />
+  return <input ref={ref} className={`h-10 ${controlCls} ${/\bw-/.test(className) ? '' : 'w-full'} ${className}`} {...rest} />
 })
 
 export function Select({ className = '', children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select className={`h-10 ${controlCls} ${className}`} {...rest}>
+    <select className={`h-10 ${controlCls} ${/\bw-/.test(className) ? '' : 'w-full'} ${className}`} {...rest}>
       {children}
     </select>
   )
 }
 
 export function Textarea({ className = '', ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={`min-h-24 py-2 ${controlCls} ${className}`} {...rest} />
+  return <textarea className={`min-h-24 w-full py-2 ${controlCls} ${className}`} {...rest} />
 }
 
 export function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
