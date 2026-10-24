@@ -64,3 +64,20 @@ export type Post = {
   createdAt: string
   updatedAt: string
 }
+
+export type Batch = {
+  id: string
+  accountId: string
+  name?: string
+  mode: 'daily' | 'selected_days'
+  days: number[]
+  times: string[]
+  startDate: string
+  status: 'draft' | 'scheduled' | 'completed' | 'cancelled'
+  totalItems: number
+  counts: Record<string, number>
+  first?: string
+  last?: string
+  createdAt: string
+  posts?: Post[]
+}

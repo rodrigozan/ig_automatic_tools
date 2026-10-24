@@ -63,3 +63,14 @@ Feito:
 Pendente (**Ação do Rod**): conectar a conta Creator e publicar de verdade um post de imagem, um reel e um carrossel de 3 itens; agendar um vídeo fora do formato; forçar uma falha.
 
 Observação: o campo `accessTokenEnc` deixou de ser obrigatório e foi criado `disconnectedAt` na Conta do Instagram, para apagar o token na desconexão mantendo o histórico (documento 03).
+
+## Etapa 4: Programação em massa (lote)
+
+Situação: código concluído e testado. Lote real pendente (**Ação do Rod**).
+
+Feito:
+- API: modelo `Batch`, cálculo de horários com `luxon` no fuso do usuário (todo dia ou dias da semana, um vídeo por horário na ordem dos vídeos, horários sem antecedência pulados, horário editado fica fixo, continua nas semanas seguintes), `POST /batches/preview` (não grava), `POST /batches` (lote e uma publicação reel por vídeo), `GET /batches`, `GET /batches/:id`, `DELETE /batches/:id` (cancela só as pendentes), lote vira `completed` quando nada mais está pendente. Agenda padrão já validada em `PATCH /users/me` (etapa 2). Mensagens de validação em português (`zod` com `pt-BR`).
+- Frontend: Novo lote (conta, envio de vídeos com progresso, biblioteca, frequência e horários vindos da agenda padrão e ajustáveis, data inicial, revisão com legenda por vídeo, legenda padrão para as vazias ou para todas, reordenar por alça de arrastar e por botões de subir e descer com recálculo, horário editável que fica fixo, confirmar), Lotes (lista e detalhe com cancelamento e contagem de pendentes), edição da agenda padrão em Configurações, aviso de limite da Meta.
+- Testes (56 no total): todo dia e dias da semana, fuso e horário de verão (America/New_York), horários sem antecedência, horário fixo, reordenação, mais vídeos que horários na semana, preview sem gravar, criação, validações, cancelamento sem tocar nas publicadas, conclusão do lote.
+
+Pendente (**Ação do Rod**): subir 6 vídeos, confirmar um lote em 3 dias da semana e conferir a fila e a publicação do primeiro.

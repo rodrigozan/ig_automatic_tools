@@ -5,6 +5,7 @@ import { HttpError, notFound, parse } from "../lib/errors";
 import { objectId } from "../lib/validation";
 import { ScheduledPost, publicPost, EDITABLE_STATUSES } from "../models/ScheduledPost";
 import { validatePost } from "../services/posts";
+import { completeBatchIfDone } from "./batches";
 
 export const postsRouter = Router();
 
@@ -109,5 +110,6 @@ postsRouter.delete("/posts/:id", requireAuth, async (req, res) => {
   post.status = "cancelled";
   post.set("nextAttemptAt", undefined);
   await post.save();
+  if (post.batchId) await completeBatchIfDone(post.batchId);
   res.sendStatus(204);
 });

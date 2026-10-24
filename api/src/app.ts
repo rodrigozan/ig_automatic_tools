@@ -13,7 +13,13 @@ import { instagramRouter } from "./routes/instagram";
 import { mediaRouter } from "./routes/media";
 import { postsRouter } from "./routes/posts";
 import { notificationsRouter } from "./routes/notifications";
+import { batchesRouter, completeBatchIfDone } from "./routes/batches";
+import { postFinalHooks } from "./services/publisher";
 import { errorHandler } from "./lib/errors";
+
+postFinalHooks.push(async (post) => {
+  if (post.batchId) await completeBatchIfDone(post.batchId);
+});
 
 export function createApp() {
   const app = express();
@@ -31,6 +37,7 @@ export function createApp() {
   api.use(instagramRouter);
   api.use(mediaRouter);
   api.use(postsRouter);
+  api.use(batchesRouter);
   api.use(notificationsRouter);
   api.use((_req, res) => {
     res.status(404).json({ error: "not_found", message: "Rota não encontrada." });

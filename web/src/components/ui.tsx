@@ -85,7 +85,7 @@ export function Select({ className = '', children, ...rest }: SelectHTMLAttribut
 }
 
 export function Textarea({ className = '', ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={`min-h-24 w-full py-2 ${controlCls} ${className}`} {...rest} />
+  return <textarea className={`${/\bmin-h-/.test(className) ? '' : 'min-h-24'} w-full py-2 ${controlCls} ${className}`} {...rest} />
 }
 
 export function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {

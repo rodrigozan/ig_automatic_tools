@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { ptBR } from "zod/locales";
+
+z.config(ptBR());
 import { Types } from "mongoose";
 
 export const timeString = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use o formato HH:mm.");

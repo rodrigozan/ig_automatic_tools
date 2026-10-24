@@ -16,6 +16,8 @@ import MediaPage from './pages/MediaPage'
 import PostsPage from './pages/PostsPage'
 import PostEditorPage from './pages/PostEditorPage'
 import NotificationsPage from './pages/NotificationsPage'
+import BatchesPage, { BatchDetailPage } from './pages/BatchesPage'
+import BatchNewPage from './pages/BatchNewPage'
 import { ForbiddenPage, NotFoundPage } from './pages/ErrorPages'
 
 function SessionWatcher() {
@@ -76,6 +78,9 @@ export default function App() {
               <Route path="publicacoes" element={<PostsPage />} />
               <Route path="publicacoes/nova" element={<PostEditorPage />} />
               <Route path="publicacoes/:id" element={<PostEditorPage key="edit" />} />
+              <Route path="lotes" element={<BatchesPage />} />
+              <Route path="lotes/novo" element={<BatchNewPage />} />
+              <Route path="lotes/:id" element={<BatchDetailPage />} />
               <Route path="avisos" element={<NotificationsPage />} />
               <Route path="configuracoes" element={<SettingsPage />} />
               <Route
