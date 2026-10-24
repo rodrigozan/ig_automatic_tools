@@ -35,6 +35,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "test": "node -r ts-node/register --test --test-concurrency=1 \"src/tests/**/*.test.ts\"",
-    "test:clean": "node -r ts-node/register src/scripts/cleanTestDb.ts"
+    "test:clean": "node -r ts-node/register src/scripts/cleanTestDb.ts",
+    "cancel-pending": "node -r ts-node/register src/scripts/cancelPending.ts"
   }
 }

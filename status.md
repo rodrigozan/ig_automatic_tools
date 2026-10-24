@@ -131,3 +131,25 @@ systemctl enable --now ig-backup.timer
 ```
 
 - Rodar o inspetor da skill de design no VPS (comando do plano) e conferir que não há FAIL.
+
+## Etapa 8: Lançamento e como voltar atrás
+
+Situação: preparada. O lançamento depende das ações do Rod abaixo.
+
+Feito:
+- Build de produção conferido: `yarn build` no `web/` e na `api/`, `node dist/server.js` com `NODE_ENV=production` serve o painel em `/ig` e responde `GET /ig/api/health`.
+- O servidor não sobe sem `DB_URI`, `JWT_SECRET` e `TOKEN_ENC_KEY` válidos; variáveis vazias no `.env` usam os padrões.
+- `deploy/deploy.sh [ref]`: atualiza o código (ou volta para uma tag), instala, gera os builds, reinicia o serviço e confere o `health`.
+- `yarn cancel-pending`: marca as publicações pendentes como `cancelled` antes de desligar.
+- `README.md` com desenvolvimento, implantação e como voltar atrás.
+
+Pendente (**Ação do Rod**), nesta ordem:
+1. Concluir as verificações 1 a 3 da etapa 1 e registrar em `docs/planejamento/07-resultado-verificacoes.md`.
+2. Preencher o `api/.env` de produção, instalar o serviço (`deploy/ig-automatic-tools.service`) e rodar `deploy/deploy.sh`.
+3. Aplicar o Funnel em `/ig` e conferir que `/` continua no app da porta 3000.
+4. Percorrer o checklist do PRD (histórias de uso 1 a 10) com a conta do Rod.
+5. Marcar a versão: `git tag v1.0.0` e `git push origin v1.0.0`.
+6. Ensaiar a volta atrás uma vez num banco de teste (`deploy/restore.sh`).
+7. Antes de qualquer tester: migrar para domínio próprio com Caddy e atualizar as URLs de retorno do Google, do Facebook e do Instagram, o webhook da Meta e o `PUBLIC_BASE_URL`.
+8. Manter o app da Meta em modo de desenvolvimento, só com o Rod e os testers.
+9. Acompanhar o sinal de sucesso: 2 semanas sem abrir o app do Instagram para publicar.
