@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, currentUser } from "../middleware/auth";
+import { requireAuthOrAgent } from "../middleware/agentAuth";
 import { HttpError, notFound, parse } from "../lib/errors";
 import { objectId } from "../lib/validation";
 import { ScheduledPost, publicPost, EDITABLE_STATUSES } from "../models/ScheduledPost";
@@ -33,7 +34,7 @@ const patchSchema = z
   })
   .strict();
 
-postsRouter.get("/posts", requireAuth, async (req, res) => {
+postsRouter.get("/posts", requireAuthOrAgent, async (req, res) => {
   const user = currentUser(req);
   const filter: Record<string, unknown> = { userId: user._id };
   const status = typeof req.query.status === "string" ? req.query.status.split(",").filter((s) => (statuses as readonly string[]).includes(s)) : [];
@@ -50,7 +51,7 @@ postsRouter.get("/posts", requireAuth, async (req, res) => {
   res.json(posts.map(publicPost));
 });
 
-postsRouter.post("/posts", requireAuth, async (req, res) => {
+postsRouter.post("/posts", requireAuthOrAgent, async (req, res) => {
   const user = currentUser(req);
   const body = parse(createSchema, req.body);
   await validatePost(user._id, { ...body, checkTime: body.status === "scheduled" });
@@ -58,7 +59,7 @@ postsRouter.post("/posts", requireAuth, async (req, res) => {
   res.status(201).json(publicPost(post));
 });
 
-postsRouter.get("/posts/:id", requireAuth, async (req, res) => {
+postsRouter.get("/posts/:id", requireAuthOrAgent, async (req, res) => {
   const post = await ScheduledPost.findOne({ _id: req.params.id, userId: currentUser(req)._id });
   if (!post) throw notFound("Publicação não encontrada.");
   res.json(publicPost(post));

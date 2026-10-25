@@ -4,6 +4,7 @@ import { Router } from "express";
 import multer from "multer";
 import { config, limits } from "../config";
 import { requireAuth, currentUser } from "../middleware/auth";
+import { requireAuthOrAgent } from "../middleware/agentAuth";
 import { HttpError, badRequest, notFound } from "../lib/errors";
 import { randomToken } from "../lib/crypto";
 import { Media, publicMedia } from "../models/Media";
@@ -35,7 +36,7 @@ const upload = multer({
   },
 });
 
-mediaRouter.post("/media", requireAuth, upload.array("files", 50), async (req, res) => {
+mediaRouter.post("/media", requireAuthOrAgent, upload.array("files", 50), async (req, res) => {
   const user = currentUser(req);
   const files = (req.files as Express.Multer.File[] | undefined) ?? [];
   if (files.length === 0) throw badRequest("Envie ao menos um arquivo.", { files: "Envie ao menos um arquivo." });
@@ -57,7 +58,7 @@ mediaRouter.post("/media", requireAuth, upload.array("files", 50), async (req, r
   res.status(201).json(created);
 });
 
-mediaRouter.get("/media", requireAuth, async (req, res) => {
+mediaRouter.get("/media", requireAuthOrAgent, async (req, res) => {
   const user = currentUser(req);
   const status = String(req.query.status ?? "");
   const filter: Record<string, unknown> = { userId: user._id, deletedAt: { $exists: false } };

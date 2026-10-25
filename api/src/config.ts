@@ -15,6 +15,10 @@ export const config = {
   jwtSecret: env.JWT_SECRET || "",
   tokenEncKey: env.TOKEN_ENC_KEY || "",
   adminEmail: (env.ADMIN_EMAIL || "").toLowerCase(),
+  // Token de agente do PhanterClaw (escopo instagram:publish). Sem o segredo, a rota por agente fica desligada.
+  agentJwtSecret: env.PHANTERCLAW_IG_JWT_SECRET || "",
+  agentIds: (env.IG_AGENT_IDS || "gladiador-dourado").split(",").map((id) => id.trim()).filter(Boolean),
+  agentUserEmail: (env.IG_AGENT_USER_EMAIL || env.ADMIN_EMAIL || "").toLowerCase(),
   googleClientId: env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: env.GOOGLE_CLIENT_SECRET || "",
   facebookAppId: env.FACEBOOK_APP_ID || "",

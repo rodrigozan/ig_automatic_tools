@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { config } from "../config";
 import { requireAuth, currentUser } from "../middleware/auth";
+import { requireAuthOrAgent } from "../middleware/agentAuth";
 import { cookieOptions, signTemp, verifyTemp } from "../lib/session";
 import { encrypt, randomToken } from "../lib/crypto";
 import { notFound } from "../lib/errors";
@@ -81,7 +82,7 @@ instagramRouter.get("/instagram/callback", requireAuth, async (req, res) => {
   }
 });
 
-instagramRouter.get("/instagram/accounts", requireAuth, async (req, res) => {
+instagramRouter.get("/instagram/accounts", requireAuthOrAgent, async (req, res) => {
   const accounts = await InstagramAccount.find(activeAccountsFilter(currentUser(req)._id)).sort({ connectedAt: 1 });
   res.json(await Promise.all(accounts.map(publicAccount)));
 });
