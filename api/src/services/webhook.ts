@@ -4,11 +4,23 @@ import { WebhookEvent } from "../models/WebhookEvent";
 import { handleComment, handleMessage } from "./dm";
 
 export function verifySignature(raw: Buffer, header: string | undefined) {
-  if (!header || !config.instagramAppSecret) return false;
-  const expected = `sha256=${crypto.createHmac("sha256", config.instagramAppSecret).update(raw).digest("hex")}`;
-  const a = Buffer.from(header);
-  const b = Buffer.from(expected);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  return signatureSource(raw, header) !== null;
+}
+
+export function signatureSource(raw: Buffer, header: string | undefined): "instagram" | "facebook" | null {
+  if (!header) return null;
+  const candidates = [
+    ["instagram", config.instagramAppSecret],
+    ["facebook", config.facebookAppSecret],
+  ] as const;
+  for (const [source, secret] of candidates) {
+    if (!secret) continue;
+    const expected = `sha256=${crypto.createHmac("sha256", secret).update(raw).digest("hex")}`;
+    const a = Buffer.from(header);
+    const b = Buffer.from(expected);
+    if (a.length === b.length && crypto.timingSafeEqual(a, b)) return source;
+  }
+  return null;
 }
 
 type Job = { key: string; run: () => Promise<unknown> };

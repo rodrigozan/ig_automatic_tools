@@ -133,6 +133,11 @@ export const igApi = {
     return { igUserId: String(d.user_id), username: d.username, accountType: d.account_type, profilePictureUrl: d.profile_picture_url };
   },
 
+  async ownsId(id: string, token: string, username: string): Promise<boolean> {
+    const d = await get<{ username?: string }>(`/${id}`, { fields: "username", access_token: token });
+    return !!d.username && d.username.toLowerCase() === username.toLowerCase();
+  },
+
   async subscribeWebhooks(igUserId: string, token: string) {
     await post(`/${igUserId}/subscribed_apps`, { subscribed_fields: "comments,messages,messaging_postbacks", access_token: token });
   },

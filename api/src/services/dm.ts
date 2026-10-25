@@ -130,12 +130,39 @@ async function checkHourlyLimit(account: InstagramAccountDoc, now: Date) {
   return used < limit;
 }
 
+const LIVE_ACCOUNT = { status: "connected" as const, disconnectedAt: { $exists: false } };
+
+// O entry.id do webhook nem sempre é o user_id do /me: se não casar, confirma na API
+// qual conta conectada é a dona do id e guarda como alternativo.
+export async function findAccountForWebhook(webhookId: string): Promise<InstagramAccountDoc | null> {
+  const direct = await InstagramAccount.findOne({ ...LIVE_ACCOUNT, $or: [{ igUserId: webhookId }, { altIgUserIds: webhookId }] });
+  if (direct) return direct;
+  for (const candidate of await InstagramAccount.find(LIVE_ACCOUNT).sort({ connectedAt: -1 })) {
+    try {
+      if (await igApi.ownsId(webhookId, accessToken(candidate), candidate.username)) {
+        candidate.altIgUserIds.push(webhookId);
+        await candidate.save();
+        console.log(`webhook: id ${webhookId} vinculado à conta @${candidate.username} (${candidate.igUserId})`);
+        return candidate;
+      }
+    } catch {
+      // token inválido ou id de outra conta: tenta a próxima
+    }
+  }
+  console.warn(`webhook: id ${webhookId} não pertence a nenhuma conta conectada`);
+  return null;
+}
+
+function isOwnId(account: InstagramAccountDoc, id: string) {
+  return id === account.igUserId || account.altIgUserIds.includes(id);
+}
+
 export type CommentEvent = { igUserId: string; commentId: string; mediaId?: string; fromId: string; fromUsername?: string; text: string; timestamp?: Date };
 
 export async function handleComment(ev: CommentEvent, now = new Date()) {
   if (ev.fromId === ev.igUserId) return null;
-  const account = await InstagramAccount.findOne({ igUserId: ev.igUserId, status: "connected", disconnectedAt: { $exists: false } });
-  if (!account) return null;
+  const account = await findAccountForWebhook(ev.igUserId);
+  if (!account || isOwnId(account, ev.fromId)) return null;
   if (ev.timestamp && now.getTime() - ev.timestamp.getTime() > PRIVATE_REPLY_WINDOW_MS) return null;
   const automations = await DmAutomation.find({ accountId: account._id, active: true }).sort({ createdAt: 1 });
   const automation = automations.find(
@@ -188,8 +215,8 @@ export type MessageEvent = { igUserId: string; senderId: string; mid: string; te
 
 export async function handleMessage(ev: MessageEvent, now = new Date()) {
   if (ev.senderId === ev.igUserId) return null;
-  const account = await InstagramAccount.findOne({ igUserId: ev.igUserId, status: "connected", disconnectedAt: { $exists: false } });
-  if (!account) return null;
+  const account = await findAccountForWebhook(ev.igUserId);
+  if (!account || isOwnId(account, ev.senderId)) return null;
 
   if (ev.postback?.payload?.startsWith("c:")) {
     const [, convId, nextStepId] = ev.postback.payload.split(":");

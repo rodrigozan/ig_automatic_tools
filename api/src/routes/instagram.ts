@@ -53,7 +53,8 @@ instagramRouter.get("/instagram/callback", requireAuth, async (req, res) => {
   try {
     const { accessToken: token, expiresIn } = await igApi.exchangeCode(req.query.code);
     const profile = await igApi.profile(token);
-    const type = profile.accountType?.toUpperCase();
+    const raw = profile.accountType?.toUpperCase();
+    const type = raw === "MEDIA_CREATOR" ? "CREATOR" : raw;
     if (type !== "CREATOR" && type !== "BUSINESS") return back(res, "erro=nao_profissional");
     const existing = await InstagramAccount.findOne({ igUserId: profile.igUserId });
     if (existing && String(existing.userId) !== user.id && !existing.disconnectedAt) return back(res, "erro=outra_pessoa");

@@ -13,6 +13,7 @@ const InstagramAccountSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     igUserId: { type: String, required: true, unique: true },
+    altIgUserIds: { type: [String], default: [], index: true },
     username: { type: String, required: true },
     accountType: { type: String, enum: ["CREATOR", "BUSINESS"], required: true },
     profilePictureUrl: { type: String },

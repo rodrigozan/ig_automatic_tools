@@ -1,6 +1,6 @@
 import express, { Router } from "express";
 import { config } from "../config";
-import { acceptWebhook, verifySignature } from "../services/webhook";
+import { acceptWebhook, signatureSource } from "../services/webhook";
 
 export const webhooksRouter = Router();
 
@@ -17,7 +17,10 @@ webhooksRouter.get("/webhooks/instagram", (req, res) => {
 
 webhooksRouter.post("/webhooks/instagram", express.raw({ type: "*/*", limit: "1mb" }), async (req, res) => {
   const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
-  if (!verifySignature(raw, req.header("x-hub-signature-256"))) {
+  const source = signatureSource(raw, req.header("x-hub-signature-256"));
+  const signed = source !== null;
+  console.log(`webhook instagram recebido: ${raw.length} bytes, assinatura ${signed ? `ok (segredo ${source})` : "inválida"}`);
+  if (!signed) {
     res.sendStatus(401);
     return;
   }
@@ -28,6 +31,10 @@ webhooksRouter.post("/webhooks/instagram", express.raw({ type: "*/*", limit: "1m
     res.sendStatus(400);
     return;
   }
+  const summary = (payload.entry ?? []).map((e: { id?: string; changes?: { field?: string }[]; messaging?: unknown[] }) =>
+    `${e.id}[${[...(e.changes ?? []).map((c) => c.field), ...(e.messaging?.length ? ["messaging"] : [])].join(",")}]`
+  );
+  console.log(`webhook instagram payload: object=${payload.object} entry=${summary.join(" ")}`);
   try {
     await acceptWebhook(payload);
     res.sendStatus(200);
