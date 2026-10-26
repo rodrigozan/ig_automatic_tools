@@ -42,7 +42,8 @@ export default function PostEditorPage() {
   const [date, setDate] = useState(() => defaultWhen(tz).date)
   const [time, setTime] = useState(() => defaultWhen(tz).time)
   const [library, setLibrary] = useState<MediaItem[]>([])
-  const [saving, setSaving] = useState<'scheduled' | 'draft' | null>(null)
+  const [saving, setSaving] = useState<'scheduled' | 'draft' | 'now' | null>(null)
+  const [nowOpen, setNowOpen] = useState(false)
   const [error, setError] = useState<{ message?: string; fields: Record<string, string> }>({ fields: {} })
   const [dirty, setDirty] = useState(false)
   const [leaveOpen, setLeaveOpen] = useState(false)
@@ -137,16 +138,24 @@ export default function PostEditorPage() {
     [type],
   )
 
-  const submit = async (status: 'scheduled' | 'draft') => {
+  const submit = async (status: 'scheduled' | 'draft' | 'now') => {
     setSaving(status)
     setError({ fields: {} })
-    const body = { accountId, type, mediaIds: selected, caption, scheduledAt: zonedToUtc(date, time, tz), status }
+    const now = status === 'now'
+    const body = {
+      accountId,
+      type,
+      mediaIds: selected,
+      caption,
+      status: now ? 'scheduled' : status,
+      ...(now ? { publishNow: true } : { scheduledAt: zonedToUtc(date, time, tz) }),
+    }
     try {
       const r = isNew ? await api.post<Post>('/posts', body) : await api.patch<Post>(`/posts/${id}`, body)
       setDirty(false)
       toast({
         tone: 'success',
-        text: status === 'draft' ? 'Rascunho salvo.' : `Agendado para ${formatDateTime(r.data.scheduledAt, tz)}.`,
+        text: status === 'draft' ? 'Rascunho salvo.' : now ? 'Publicando agora. Acompanhe o status na lista.' : `Agendado para ${formatDateTime(r.data.scheduledAt, tz)}.`,
         link: { to: `/publicacoes/${r.data.id}`, label: 'Ver' },
       })
       navigate('/publicacoes')
@@ -335,6 +344,9 @@ export default function PostEditorPage() {
               <Button onClick={() => submit('draft')} loading={saving === 'draft'} loadingText="Salvando..." disabled={saving !== null}>
                 Salvar rascunho
               </Button>
+              <Button onClick={() => setNowOpen(true)} loading={saving === 'now'} loadingText="Publicando..." disabled={saving !== null}>
+                Publicar agora
+              </Button>
               <Button variant="primary" onClick={() => submit('scheduled')} loading={saving === 'scheduled'} loadingText="Agendando..." disabled={saving !== null}>
                 Agendar
               </Button>
@@ -349,6 +361,7 @@ export default function PostEditorPage() {
       </div>
 
       <ConfirmDialog open={leaveOpen} title="Descartar mudanças?" message="O que você preencheu será perdido." confirmLabel="Descartar" danger onClose={() => setLeaveOpen(false)} onConfirm={() => navigate('/publicacoes')} />
+      <ConfirmDialog open={nowOpen} title="Publicar agora?" message="A publicação vai para o Instagram em instantes, ignorando a data e a hora preenchidas." confirmLabel="Publicar agora" onClose={() => setNowOpen(false)} onConfirm={() => (setNowOpen(false), submit('now'))} />
       <ConfirmDialog open={cancelOpen} title="Cancelar esta publicação?" message="Ela não será publicada. O arquivo é apagado em 7 dias." confirmLabel="Cancelar publicação" danger onClose={() => setCancelOpen(false)} onConfirm={cancelPost} />
     </div>
   )

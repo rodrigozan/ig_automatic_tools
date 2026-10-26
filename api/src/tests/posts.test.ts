@@ -97,6 +97,25 @@ test("editar e cancelar seguem a máquina de estados", async () => {
   assert.equal((await ScheduledPost.findById(id))?.status, "cancelled");
 });
 
+test("publicar agora: dispensa antecedência, exige scheduledAt ou publishNow e publica na hora", async () => {
+  const { u, acc, img, c } = await setup();
+  const img2 = await createMedia(u._id, "image");
+  const base = { accountId: acc.id, type: "post", mediaIds: [img.id], caption: "oi" };
+  assert.equal((await c.post("/posts", base)).status, 400);
+  assert.equal((await c.post("/posts", { ...base, publishNow: true, status: "draft" })).status, 400);
+  const r = await c.post("/posts", { ...base, publishNow: true });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.status === "scheduled" || r.body.status === "publishing" || r.body.status === "published", true);
+  assert.equal(Math.abs(new Date(r.body.scheduledAt).getTime() - Date.now()) < 10000, true);
+  for (let i = 0; i < 50 && (await ScheduledPost.findById(r.body.id))?.status !== "published"; i++) await new Promise((x) => setTimeout(x, 50));
+  assert.equal((await ScheduledPost.findById(r.body.id))?.status, "published");
+
+  const draft = await c.post("/posts", { ...base, mediaIds: [img2.id], scheduledAt: inMinutes(60), status: "draft" });
+  const p = await c.patch(`/posts/${draft.body.id}`, { publishNow: true });
+  assert.equal(p.status, 200);
+  assert.equal(p.body.status === "scheduled" || p.body.status === "publishing" || p.body.status === "published", true);
+});
+
 test("outro usuário não vê nem mexe na publicação", async () => {
   const { acc, img, c } = await setup();
   const created = await c.post("/posts", { accountId: acc.id, type: "post", mediaIds: [img.id], scheduledAt: inMinutes(10) });

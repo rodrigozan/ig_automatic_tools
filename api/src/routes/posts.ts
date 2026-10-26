@@ -7,6 +7,7 @@ import { objectId } from "../lib/validation";
 import { ScheduledPost, publicPost, EDITABLE_STATUSES } from "../models/ScheduledPost";
 import { validatePost } from "../services/posts";
 import { completeBatchIfDone } from "./batches";
+import { runPublisherTick } from "../services/publisher";
 
 export const postsRouter = Router();
 
@@ -18,10 +19,18 @@ const createSchema = z
     type: z.enum(["post", "reel", "carousel"]),
     mediaIds: z.array(objectId),
     caption: z.string().default(""),
-    scheduledAt: z.coerce.date(),
+    scheduledAt: z.coerce.date().optional(),
     status: z.enum(["draft", "scheduled"]).default("scheduled"),
+    publishNow: z.boolean().default(false),
   })
-  .strict();
+  .strict()
+  .refine((b) => b.publishNow || b.scheduledAt, { message: "Informe scheduledAt ou publishNow.", path: ["scheduledAt"] })
+  .refine((b) => !(b.publishNow && b.status === "draft"), { message: "Rascunho não pode ser publicado na hora.", path: ["publishNow"] });
+
+// Publicar agora = agendar para este instante, sem a antecedência mínima; o publisher pega já.
+function kickPublisher() {
+  runPublisherTick().catch((err) => console.error("falha ao publicar agora", err instanceof Error ? err.stack : err));
+}
 
 const patchSchema = z
   .object({
@@ -31,6 +40,7 @@ const patchSchema = z
     caption: z.string().optional(),
     scheduledAt: z.coerce.date().optional(),
     status: z.enum(["draft", "scheduled"]).optional(),
+    publishNow: z.boolean().optional(),
   })
   .strict();
 
@@ -53,9 +63,11 @@ postsRouter.get("/posts", requireAuthOrAgent, async (req, res) => {
 
 postsRouter.post("/posts", requireAuthOrAgent, async (req, res) => {
   const user = currentUser(req);
-  const body = parse(createSchema, req.body);
-  await validatePost(user._id, { ...body, checkTime: body.status === "scheduled" });
-  const post = await ScheduledPost.create({ ...body, userId: user._id });
+  const { publishNow, ...body } = parse(createSchema, req.body);
+  const scheduledAt = publishNow ? new Date() : body.scheduledAt!;
+  await validatePost(user._id, { ...body, scheduledAt, checkTime: body.status === "scheduled" && !publishNow });
+  const post = await ScheduledPost.create({ ...body, scheduledAt, userId: user._id });
+  if (publishNow) kickPublisher();
   res.status(201).json(publicPost(post));
 });
 
@@ -67,7 +79,8 @@ postsRouter.get("/posts/:id", requireAuthOrAgent, async (req, res) => {
 
 postsRouter.patch("/posts/:id", requireAuth, async (req, res) => {
   const user = currentUser(req);
-  const body = parse(patchSchema, req.body);
+  const { publishNow, ...parsed } = parse(patchSchema, req.body);
+  const body = publishNow ? { ...parsed, scheduledAt: new Date(), status: "scheduled" as const } : parsed;
   const post = await ScheduledPost.findOne({ _id: req.params.id, userId: user._id });
   if (!post) throw notFound("Publicação não encontrada.");
   if (!(EDITABLE_STATUSES as readonly string[]).includes(post.status)) {
@@ -84,7 +97,7 @@ postsRouter.patch("/posts/:id", requireAuth, async (req, res) => {
   const timeChanged = body.scheduledAt !== undefined && body.scheduledAt.getTime() !== post.scheduledAt.getTime();
   let status: "draft" | "scheduled" | "failed" = body.status ?? (post.status as "draft" | "scheduled" | "failed");
   if (wasFailed && timeChanged && !body.status) status = "scheduled";
-  const checkTime = status === "scheduled" && (timeChanged || post.status !== "scheduled");
+  const checkTime = !publishNow && status === "scheduled" && (timeChanged || post.status !== "scheduled");
   await validatePost(user._id, { ...next, checkTime });
   post.set({ ...next });
   if (status === "scheduled" && post.status !== "scheduled") {
@@ -95,6 +108,7 @@ postsRouter.patch("/posts/:id", requireAuth, async (req, res) => {
   if (timeChanged && status === "scheduled") post.set("nextAttemptAt", undefined);
   post.status = status;
   await post.save();
+  if (publishNow) kickPublisher();
   res.json(publicPost(post));
 });
 
