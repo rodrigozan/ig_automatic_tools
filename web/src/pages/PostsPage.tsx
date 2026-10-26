@@ -29,7 +29,7 @@ export default function PostsPage() {
     qs.set('from', zonedToUtc(weekStart, '00:00', tz))
     qs.set('to', zonedToUtc(addDays(weekStart, 7), '00:00', tz))
   }
-  if (view === 'list' && status === 'published,cancelled') qs.set('order', 'desc')
+  if (view === 'list') qs.set('order', 'desc')
   const { data, loading, error, reload } = useFetch<Post[]>(`/posts?${qs}`)
   const posts = data ?? []
 
@@ -64,6 +64,7 @@ export default function PostsPage() {
             <option value="scheduled">Agendadas</option>
             <option value="failed">Com falha</option>
             <option value="draft">Rascunhos</option>
+            <option value="published">Publicadas</option>
             <option value="published,cancelled">Histórico</option>
             <option value="">Todas</option>
           </Select>
