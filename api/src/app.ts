@@ -21,6 +21,7 @@ import { deactivateAutomationsOf, expireConversations, processQueuedReplies, pur
 import { minuteTasks } from "./services/scheduler";
 import { cleanupTasks } from "./services/cleanup";
 import { dashboardRouter } from "./routes/dashboard";
+import { analysisRouter } from "./routes/analysis";
 import { errorHandler } from "./lib/errors";
 import { securityHeaders, loginLimiter, writeLimiter, uploadLimiter, webhookLimiter } from "./middleware/security";
 
@@ -62,6 +63,7 @@ export function createApp() {
   api.use(batchesRouter);
   api.use(automationsRouter);
   api.use(dashboardRouter);
+  api.use(analysisRouter);
   api.use(notificationsRouter);
   api.use((_req, res) => {
     res.status(404).json({ error: "not_found", message: "Rota não encontrada." });

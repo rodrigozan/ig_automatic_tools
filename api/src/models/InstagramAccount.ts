@@ -23,6 +23,11 @@ const InstagramAccountSchema = new Schema(
     connectedAt: { type: Date, default: Date.now },
     publishLimit: { type: Number },
     disconnectedAt: { type: Date },
+    // Acesso pelo Facebook (Página ligada à conta): só serve para consultar outros perfis profissionais na análise.
+    fbPageTokenEnc: { type: EncryptedSchema },
+    fbIgUserId: { type: String },
+    fbPageName: { type: String },
+    fbConnectedAt: { type: Date },
   },
   { timestamps: true }
 );

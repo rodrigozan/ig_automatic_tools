@@ -19,6 +19,9 @@ export const config = {
   agentJwtSecret: env.PHANTERCLAW_IG_JWT_SECRET || "",
   agentIds: (env.IG_AGENT_IDS || "gladiador-dourado").split(",").map((id) => id.trim()).filter(Boolean),
   agentUserEmail: (env.IG_AGENT_USER_EMAIL || env.ADMIN_EMAIL || "").toLowerCase(),
+  // Token da prospecção (Harvey/phanter_scrapper) para consultar perfis: escopo instagram:analyze, segredo próprio.
+  analysisJwtSecret: env.IG_ANALYSIS_JWT_SECRET || "",
+  analysisAgentIds: (env.IG_ANALYSIS_AGENT_IDS || "phanter-scrapper").split(",").map((id) => id.trim()).filter(Boolean),
   googleClientId: env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: env.GOOGLE_CLIENT_SECRET || "",
   facebookAppId: env.FACEBOOK_APP_ID || "",

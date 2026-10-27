@@ -119,3 +119,44 @@ export type Conversation = {
 export type DmMessageItem = { id: string; direction: 'in' | 'out'; text: string | null; textExpired: boolean; stepId?: string; status: string; error?: string; createdAt: string }
 
 export type IgPost = { id: string; caption?: string; mediaType: string; thumbnailUrl?: string; mediaUrl?: string; permalink?: string; timestamp?: string }
+
+export type ContentKind = 'image' | 'reel' | 'video' | 'carousel'
+export type ProfileActivity = 'active' | 'irregular' | 'abandoned' | 'insufficient'
+export type EngagementLevel = 'high' | 'medium' | 'low' | 'unknown'
+
+export type ProfileMetrics = {
+  followers: number
+  following?: number
+  mediaCount: number
+  postsAnalyzed: number
+  lastPostAt?: string
+  daysSinceLastPost?: number
+  postsLast30d: number
+  postsPerWeek: number
+  avgLikes?: number
+  avgComments?: number
+  engagementRate?: number
+  likesHidden: boolean
+  contentMix: Record<ContentKind, number>
+  activity: ProfileActivity
+  engagementLevel: EngagementLevel
+  topPosts: { id: string; kind: ContentKind; likes: number; comments: number; timestamp?: string; permalink?: string; caption: string }[]
+  hasWebsite: boolean
+  hasBio: boolean
+}
+
+export type ProfileAnalysis = {
+  id: string
+  username: string
+  kind: 'own' | 'competitor' | 'lookup'
+  profile: { name?: string; biography?: string; website?: string; profilePictureUrl?: string }
+  metrics: ProfileMetrics | null
+  error: string | null
+  fetchedAt: string
+}
+
+export type AnalysisOverview = {
+  facebook: { configured: boolean; connected: boolean }
+  own: { accountId: string; username: string; analysis: ProfileAnalysis | null; error: string | null }[]
+  competitors: ProfileAnalysis[]
+}

@@ -48,6 +48,35 @@ async function post<T>(path: string, params: Record<string, unknown>, body?: unk
   }
 }
 
+const FB_GRAPH = "https://graph.facebook.com";
+const FB_VERSION = "v23.0";
+
+async function fbGet<T>(path: string, params: Record<string, unknown>): Promise<T> {
+  try {
+    return (await axios.get<T>(`${FB_GRAPH}/${FB_VERSION}${path}`, { params, timeout: 30_000 })).data;
+  } catch (err) {
+    wrap(err);
+  }
+}
+
+export const FB_ANALYSIS_SCOPES = ["instagram_basic", "pages_show_list", "pages_read_engagement"];
+
+export type AnalysisSource = { profile: import("./profileMetrics").RawProfile; posts: import("./profileMetrics").RawPost[] };
+export type FbPage = { pageId: string; pageName: string; pageToken: string; igUserId?: string; igUsername?: string };
+
+type RawMedia = { id: string; caption?: string; media_type: string; media_product_type?: string; like_count?: number; comments_count?: number; timestamp?: string; permalink?: string };
+const MEDIA_FIELDS = "id,caption,media_type,media_product_type,like_count,comments_count,timestamp,permalink";
+const mapMedia = (m: RawMedia) => ({
+  id: m.id,
+  caption: m.caption,
+  mediaType: m.media_type,
+  productType: m.media_product_type,
+  likes: m.like_count,
+  comments: m.comments_count,
+  timestamp: m.timestamp,
+  permalink: m.permalink,
+});
+
 export type IgProfile = { igUserId: string; username: string; accountType: string; profilePictureUrl?: string };
 export type IgMediaItem = { id: string; caption?: string; mediaType: string; thumbnailUrl?: string; mediaUrl?: string; permalink?: string; timestamp?: string };
 export type ContainerParams = Record<string, string | boolean>;
@@ -200,6 +229,95 @@ export const igApi = {
       message: messagePayload(message),
     });
     return d.message_id;
+  },
+
+  // Perfil próprio e posts recentes, pela API do login do Instagram (a mesma da publicação).
+  async ownAnalysisData(igUserId: string, token: string): Promise<AnalysisSource> {
+    const p = await get<{ username: string; name?: string; biography?: string; website?: string; profile_picture_url?: string; followers_count?: number; follows_count?: number; media_count?: number }>(
+      `/${igUserId}`,
+      { fields: "username,name,biography,website,profile_picture_url,followers_count,follows_count,media_count", access_token: token }
+    );
+    const m = await get<{ data: RawMedia[] }>(`/${igUserId}/media`, { fields: MEDIA_FIELDS, limit: 50, access_token: token });
+    return {
+      profile: {
+        username: p.username,
+        name: p.name,
+        biography: p.biography,
+        website: p.website,
+        profilePictureUrl: p.profile_picture_url,
+        followers: p.followers_count ?? 0,
+        following: p.follows_count,
+        mediaCount: p.media_count ?? 0,
+      },
+      posts: (m.data ?? []).map(mapMedia),
+    };
+  },
+
+  // Outro perfil profissional (business ou creator) pelo business_discovery. Só existe na API pelo Facebook:
+  // precisa do token da Página ligada à conta e do id do Instagram dessa Página.
+  async businessDiscovery(fbIgUserId: string, pageToken: string, username: string): Promise<AnalysisSource> {
+    const d = await fbGet<{ business_discovery?: { username: string; name?: string; biography?: string; website?: string; profile_picture_url?: string; followers_count?: number; follows_count?: number; media_count?: number; media?: { data: RawMedia[] } } }>(
+      `/${fbIgUserId}`,
+      {
+        fields: `business_discovery.username(${username}){username,name,biography,website,profile_picture_url,followers_count,follows_count,media_count,media.limit(50){${MEDIA_FIELDS}}}`,
+        access_token: pageToken,
+      }
+    );
+    const b = d.business_discovery;
+    if (!b) throw new IgApiError("Perfil não encontrado.", 110);
+    return {
+      profile: {
+        username: b.username,
+        name: b.name,
+        biography: b.biography,
+        website: b.website,
+        profilePictureUrl: b.profile_picture_url,
+        followers: b.followers_count ?? 0,
+        following: b.follows_count,
+        mediaCount: b.media_count ?? 0,
+      },
+      posts: (b.media?.data ?? []).map(mapMedia),
+    };
+  },
+
+  fbAuthUrl(state: string, redirectUri: string) {
+    const p = new URLSearchParams({
+      client_id: config.facebookAppId,
+      redirect_uri: redirectUri,
+      state,
+      scope: FB_ANALYSIS_SCOPES.join(","),
+      response_type: "code",
+    });
+    return `https://www.facebook.com/${FB_VERSION}/dialog/oauth?${p}`;
+  },
+
+  // Código do login do Facebook -> token de usuário de longa duração -> Páginas e a conta do Instagram de cada uma.
+  // O token de Página obtido de um token de usuário de longa duração não expira.
+  async fbPages(code: string, redirectUri: string): Promise<FbPage[]> {
+    const short = await fbGet<{ access_token: string }>("/oauth/access_token", {
+      client_id: config.facebookAppId,
+      client_secret: config.facebookAppSecret,
+      redirect_uri: redirectUri,
+      code,
+    });
+    const long = await fbGet<{ access_token: string }>("/oauth/access_token", {
+      grant_type: "fb_exchange_token",
+      client_id: config.facebookAppId,
+      client_secret: config.facebookAppSecret,
+      fb_exchange_token: short.access_token,
+    });
+    const pages = await fbGet<{ data: { id: string; name: string; access_token: string; instagram_business_account?: { id: string; username?: string } }[] }>("/me/accounts", {
+      fields: "id,name,access_token,instagram_business_account{id,username}",
+      limit: 100,
+      access_token: long.access_token,
+    });
+    return (pages.data ?? []).map((p) => ({
+      pageId: p.id,
+      pageName: p.name,
+      pageToken: p.access_token,
+      igUserId: p.instagram_business_account?.id,
+      igUsername: p.instagram_business_account?.username,
+    }));
   },
 
   async sendMessage(igUserId: string, token: string, recipientId: string, message: DmMessage): Promise<string> {

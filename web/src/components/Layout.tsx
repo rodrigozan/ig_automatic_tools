@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Bell, CalendarDays, Film, Images, Camera, LayoutDashboard, Layers, LogOut, Menu, MessageCircle, Settings, Shield, WifiOff, X } from 'lucide-react'
+import { BarChart3, Bell, CalendarDays, Film, Images, Camera, LayoutDashboard, Layers, LogOut, Menu, MessageCircle, Settings, Shield, WifiOff, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { NotificationBell } from './NotificationBell'
@@ -15,6 +15,7 @@ export const navItems: NavItem[] = [
   { to: '/lotes', label: 'Lotes', Icon: Layers },
   { to: '/midias', label: 'Mídias', Icon: Images },
   { to: '/automacoes', label: 'Automações de DM', Icon: MessageCircle },
+  { to: '/analise', label: 'Análise de perfis', Icon: BarChart3 },
   { to: '/contas', label: 'Contas do Instagram', Icon: Camera },
   { to: '/avisos', label: 'Avisos', Icon: Bell },
   { to: '/configuracoes', label: 'Configurações', Icon: Settings },

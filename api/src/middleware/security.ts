@@ -33,5 +33,6 @@ export const writeLimiter = rateLimit({
   message,
   skip: (req) => req.method === "GET" || req.method === "HEAD",
 });
+export const analysisLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: "draft-8", legacyHeaders: false, message });
 export const uploadLimiter = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false, message });
 export const webhookLimiter = rateLimit({ windowMs: 60 * 1000, limit: 1200, standardHeaders: "draft-8", legacyHeaders: false, message });

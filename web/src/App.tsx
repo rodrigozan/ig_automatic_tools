@@ -18,6 +18,7 @@ const MediaPage = lazy(() => import('./pages/MediaPage'))
 const PostsPage = lazy(() => import('./pages/PostsPage'))
 const PostEditorPage = lazy(() => import('./pages/PostEditorPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const AnalysisPage = lazy(() => import('./pages/AnalysisPage'))
 const BatchesPage = lazy(() => import('./pages/BatchesPage'))
 const BatchDetailPage = lazy(() => import('./pages/BatchesPage').then((m) => ({ default: m.BatchDetailPage })))
 const BatchNewPage = lazy(() => import('./pages/BatchNewPage'))
@@ -90,6 +91,7 @@ export default function App() {
               <Route path="automacoes/nova" element={<AutomationEditorPage />} />
               <Route path="automacoes/:id" element={<AutomationDetailPage />} />
               <Route path="automacoes/:id/editar" element={<AutomationEditorPage key="edit" />} />
+              <Route path="analise" element={<AnalysisPage />} />
               <Route path="avisos" element={<NotificationsPage />} />
               <Route path="configuracoes" element={<SettingsPage />} />
               <Route
