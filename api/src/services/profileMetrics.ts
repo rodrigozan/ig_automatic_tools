@@ -15,7 +15,7 @@ export type RawProfile = {
 export type RawPost = {
   id: string;
   caption?: string;
-  mediaType: string; // IMAGE | VIDEO | CAROUSEL_ALBUM
+  mediaType: string; // IMAGE | VIDEO | CAROUSEL_ALBUM | TEXT (só Páginas do Facebook)
   productType?: string; // FEED | REELS | STORY ...
   likes?: number; // ausente quando o perfil esconde as curtidas
   comments?: number;
@@ -23,7 +23,7 @@ export type RawPost = {
   permalink?: string;
 };
 
-export type ContentKind = "image" | "reel" | "video" | "carousel";
+export type ContentKind = "image" | "reel" | "video" | "carousel" | "text";
 export type Activity = "active" | "irregular" | "abandoned" | "insufficient";
 export type EngagementLevel = "high" | "medium" | "low" | "unknown";
 
@@ -54,6 +54,7 @@ const DAY = 86_400_000;
 const WEEK = 7 * DAY;
 
 export function contentKind(p: Pick<RawPost, "mediaType" | "productType">): ContentKind {
+  if (p.mediaType === "TEXT") return "text";
   if (p.mediaType === "CAROUSEL_ALBUM") return "carousel";
   if (p.productType === "REELS") return "reel";
   if (p.mediaType === "VIDEO") return "video";
@@ -101,7 +102,7 @@ export function computeMetrics(profile: RawProfile, posts: RawPost[], now: Date 
   const interactions = avgLikes !== undefined || avgComments !== undefined ? (avgLikes ?? 0) + (avgComments ?? 0) : undefined;
   const engagementRate = interactions !== undefined && profile.followers > 0 && !likesHidden ? round((interactions / profile.followers) * 100) : undefined;
 
-  const mix: Record<ContentKind, number> = { image: 0, reel: 0, video: 0, carousel: 0 };
+  const mix: Record<ContentKind, number> = { image: 0, reel: 0, video: 0, carousel: 0, text: 0 };
   for (const p of dated) mix[contentKind(p)] += 1;
   if (dated.length) for (const k of Object.keys(mix) as ContentKind[]) mix[k] = round(mix[k] / dated.length);
 

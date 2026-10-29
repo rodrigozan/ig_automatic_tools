@@ -1,4 +1,4 @@
-# IG Automatic Tools
+# Phanter Tools
 
 Hub de ferramentas para criadores de conteúdo no Instagram: publicação agendada, programação em massa e automação de DM.
 
@@ -52,3 +52,5 @@ deploy/deploy.sh
 - Banco: `deploy/restore.sh <arquivo> '<uri-do-servidor>' ig-automatic-tools`.
 - Exposição: `tailscale funnel --https=10000 --set-path=/ig off` (não mexe no app da raiz).
 - Antes de desligar: `cd api && yarn cancel-pending`, para nada sair duplicado na volta.
+
+O nome exibido no web vem de `APP_NAME` em `api/.env` (padrão: `Phanter Tools`), via `GET /ig/api/config`. Reinicie a API após alterar o valor; não é necessário recompilar o web. Apenas o nome público é exposto nessa rota.

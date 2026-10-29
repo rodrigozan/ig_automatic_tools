@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { BarChart3, Link2, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { api, errorInfo } from '../lib/api'
@@ -9,6 +9,8 @@ import type { AnalysisOverview, ProfileAnalysis } from '../lib/types'
 import { activityLabel, deltaVsOwn, engagementLabel, insights, leaders, mixText, nf, numericRows } from '../lib/analysis'
 import { Banner, Button, Card, EmptyState, ErrorCard, Field, Input, PageHeader, Select, SkeletonList, Tag } from '../components/ui'
 import { useToast } from '../components/toast'
+
+const FacebookTab = lazy(() => import('./AnalysisFacebookTab'))
 
 const connectMessages: Record<string, string> = {
   cancelado: 'Você cancelou a conexão com o Facebook.',
@@ -37,10 +39,15 @@ export default function AnalysisPage() {
   const [handleError, setHandleError] = useState<string | undefined>()
   const [adding, setAdding] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [tab, setTab] = useState<'instagram' | 'facebook'>(params.get('aba') === 'facebook' ? 'facebook' : 'instagram')
 
   useEffect(() => {
-    if (params.get('conectado')) {
-      toast({ tone: 'success', text: 'Facebook conectado. Já dá para analisar outros perfis.' })
+    const conectado = params.get('conectado')
+    if (conectado === 'paginas') {
+      toast({ tone: 'success', text: 'Facebook conectado. Nenhuma conta do Instagram está ligada a essas Páginas, mas elas já aparecem na aba de Páginas.' })
+      setTab('facebook')
+    } else if (conectado) {
+      toast({ tone: 'success', text: 'Facebook conectado. Já dá para analisar perfis e Páginas.' })
       reload()
     }
     const erro = params.get('erro')
@@ -106,9 +113,27 @@ export default function AnalysisPage() {
 
   return (
     <div>
-      <PageHeader title="Análise de perfis" description="Compare o seu perfil com concorrentes e referências: frequência, engajamento e tipo de conteúdo." />
+      <PageHeader title="Análise de perfis" description="Compare o seu perfil ou Página com concorrentes e referências: frequência, engajamento e tipo de conteúdo." />
 
-      {loading ? (
+      <div role="tablist" aria-label="Rede" className="mb-4 flex gap-1 border-b border-card-border">
+        {([['instagram', 'Instagram'], ['facebook', 'Páginas do Facebook']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${tab === key ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-ink'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'facebook' ? (
+        <Suspense fallback={<Card><SkeletonList /></Card>}>
+          <FacebookTab />
+        </Suspense>
+      ) : loading ? (
         <Card>
           <SkeletonList />
         </Card>

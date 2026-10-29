@@ -1,6 +1,8 @@
+import { AppBrand } from './AppBrand'
+import { APP_NAME } from '../lib/appConfig'
 import { Suspense, useEffect, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { BarChart3, Bell, CalendarDays, Film, Images, Camera, LayoutDashboard, Layers, LogOut, Menu, MessageCircle, Settings, Shield, WifiOff, X } from 'lucide-react'
+import { BarChart3, Bell, CalendarDays, Images, Camera, LayoutDashboard, Layers, LogOut, Menu, MessageCircle, Settings, Shield, WifiOff, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { NotificationBell } from './NotificationBell'
@@ -105,8 +107,7 @@ export function Layout({ children }: { children?: ReactNode }) {
       </a>
       <aside className="sticky top-0 hidden h-screen w-[230px] shrink-0 flex-col gap-4 border-r border-border bg-surface px-3 py-5 md:flex">
         <div className="flex items-center gap-2 px-2.5">
-          <Film size={18} className="text-brand" aria-hidden />
-          <span className="font-semibold">IG Automatic Tools</span>
+          <AppBrand />
         </div>
         <div className="flex-1 overflow-y-auto">
           <NavList />
@@ -119,14 +120,14 @@ export function Layout({ children }: { children?: ReactNode }) {
         <button aria-label="Abrir menu" aria-expanded={open} onClick={() => setOpen(true)} className="flex h-11 w-11 items-center justify-center rounded-control">
           <Menu size={20} />
         </button>
-        <span className="font-semibold">{current?.label ?? 'IG Automatic Tools'}</span>
+        <span className="font-semibold">{current?.label ?? APP_NAME}</span>
         <NotificationBell />
       </header>
 
       {open && (
         <div className="fixed inset-0 z-40 flex flex-col gap-4 overflow-y-auto bg-surface px-4 py-3 md:hidden" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="flex items-center justify-between">
-            <span className="font-semibold">IG Automatic Tools</span>
+            <AppBrand />
             <button aria-label="Fechar menu" onClick={() => setOpen(false)} className="flex h-11 w-11 items-center justify-center rounded-control">
               <X size={20} />
             </button>

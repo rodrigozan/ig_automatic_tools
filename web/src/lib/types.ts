@@ -46,7 +46,13 @@ export type MediaItem = {
 export type PostType = 'post' | 'reel' | 'carousel'
 export type PostStatus = 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed' | 'cancelled'
 
+export type PostDestination = 'instagram' | 'facebook' | 'both'
+
 export type Post = {
+  destination?: PostDestination
+  facebookPageId?: string
+  fbPostId?: string
+  fbPermalink?: string
   id: string
   accountId: string
   batchId?: string
@@ -120,7 +126,7 @@ export type DmMessageItem = { id: string; direction: 'in' | 'out'; text: string 
 
 export type IgPost = { id: string; caption?: string; mediaType: string; thumbnailUrl?: string; mediaUrl?: string; permalink?: string; timestamp?: string }
 
-export type ContentKind = 'image' | 'reel' | 'video' | 'carousel'
+export type ContentKind = 'image' | 'reel' | 'video' | 'carousel' | 'text'
 export type ProfileActivity = 'active' | 'irregular' | 'abandoned' | 'insufficient'
 export type EngagementLevel = 'high' | 'medium' | 'low' | 'unknown'
 
@@ -135,6 +141,7 @@ export type ProfileMetrics = {
   postsPerWeek: number
   avgLikes?: number
   avgComments?: number
+  avgShares?: number
   engagementRate?: number
   likesHidden: boolean
   contentMix: Record<ContentKind, number>
@@ -158,5 +165,11 @@ export type ProfileAnalysis = {
 export type AnalysisOverview = {
   facebook: { configured: boolean; connected: boolean }
   own: { accountId: string; username: string; analysis: ProfileAnalysis | null; error: string | null }[]
+  competitors: ProfileAnalysis[]
+}
+
+export type PageOverview = {
+  facebook: { configured: boolean; connected: boolean }
+  own: { pageId: string; name: string; analysis: ProfileAnalysis | null; error: string | null }[]
   competitors: ProfileAnalysis[]
 }

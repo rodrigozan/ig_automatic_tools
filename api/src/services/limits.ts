@@ -8,7 +8,7 @@ const DAY = 24 * 60 * 60 * 1000;
 export async function publishUsage(account: Pick<InstagramAccountDoc, "_id" | "publishLimit">, now = new Date()) {
   const since = new Date(now.getTime() - DAY);
   const published = await ScheduledPost.find(
-    { accountId: account._id as Types.ObjectId, status: "published", publishedAt: { $gt: since } },
+    { accountId: account._id as Types.ObjectId, destination: { $ne: "facebook" }, status: "published", publishedAt: { $gt: since } },
     { publishedAt: 1 }
   ).sort({ publishedAt: 1 });
   const limit = account.publishLimit ?? limits.publishPer24h;

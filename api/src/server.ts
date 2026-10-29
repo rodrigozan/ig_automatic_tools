@@ -18,7 +18,7 @@ async function main() {
   await connectDb(config.dbUri);
   const app = createApp();
   app.listen(config.port, config.host, () => {
-    console.log(`ig-automatic-tools escutando em http://${config.host}:${config.port}`);
+    console.log(`${config.appName} escutando em http://${config.host}:${config.port}`);
   });
   await startScheduler();
 }

@@ -59,9 +59,24 @@ async function fbGet<T>(path: string, params: Record<string, unknown>): Promise<
   }
 }
 
-export const FB_ANALYSIS_SCOPES = ["instagram_basic", "pages_show_list", "pages_read_engagement"];
+async function fbPost<T>(path: string, token: string, body: Record<string, unknown>): Promise<T> {
+  try {
+    return (await axios.post<T>(`${FB_GRAPH}/${FB_VERSION}${path}`, { ...body, access_token: token }, { timeout: 60_000 })).data;
+  } catch (err) { wrap(err); }
+}
+
+export const FB_ANALYSIS_SCOPES = ["instagram_basic", "instagram_manage_insights", "pages_show_list", "pages_read_engagement", "pages_manage_posts"];
 
 export type AnalysisSource = { profile: import("./profileMetrics").RawProfile; posts: import("./profileMetrics").RawPost[] };
+type RawFbPage = { id: string; name?: string; username?: string; about?: string; website?: string; fan_count?: number; followers_count?: number; picture?: { data?: { url?: string } } };
+type RawFbPost = { id: string; message?: string; created_time?: string; permalink_url?: string; shares?: { count?: number }; reactions?: { summary?: { total_count?: number } }; comments?: { summary?: { total_count?: number } }; attachments?: { data?: { media_type?: string }[] } };
+export type PageSource = AnalysisSource & { pageId: string; avgShares?: number };
+function fbMediaType(t?: string) {
+  if (t === "photo") return "IMAGE";
+  if (t === "video" || t === "video_inline") return "VIDEO";
+  if (t === "album") return "CAROUSEL_ALBUM";
+  return "TEXT";
+}
 export type FbPage = { pageId: string; pageName: string; pageToken: string; igUserId?: string; igUsername?: string };
 
 type RawMedia = { id: string; caption?: string; media_type: string; media_product_type?: string; like_count?: number; comments_count?: number; timestamp?: string; permalink?: string };
@@ -280,14 +295,43 @@ export const igApi = {
     };
   },
 
+  async publishFacebook(pageId: string, token: string, type: "post" | "reel" | "carousel", urls: string[], caption: string): Promise<string> {
+    if (type === "reel") {
+      const session = await fbPost<{ video_id: string; upload_url: string }>(`/${pageId}/video_reels`, token, { upload_phase: "start" });
+      const uploadUrl = new URL(session.upload_url);
+      if (uploadUrl.protocol !== "https:" || uploadUrl.hostname !== "rupload.facebook.com") throw new IgApiError("URL de upload do Facebook inválida.");
+      try {
+        await axios.post(uploadUrl.href, null, { headers: { Authorization: `OAuth ${token}`, file_url: urls[0] }, timeout: 120_000 });
+      } catch (err) { wrap(err); }
+      await fbPost(`/${pageId}/video_reels`, token, { upload_phase: "finish", video_id: session.video_id, video_state: "PUBLISHED", description: caption });
+      return session.video_id;
+    }
+    if (type === "post") {
+      const result = await fbPost<{ id: string; post_id?: string }>(`/${pageId}/photos`, token, { url: urls[0], caption });
+      return result.post_id ?? result.id;
+    }
+    const attached_media = [];
+    for (const url of urls) {
+      const photo = await fbPost<{ id: string }>(`/${pageId}/photos`, token, { url, published: false });
+      attached_media.push({ media_fbid: photo.id });
+    }
+    const result = await fbPost<{ id: string }>(`/${pageId}/feed`, token, { message: caption, attached_media });
+    return result.id;
+  },
+
   fbAuthUrl(state: string, redirectUri: string) {
     const p = new URLSearchParams({
       client_id: config.facebookAppId,
       redirect_uri: redirectUri,
       state,
-      scope: FB_ANALYSIS_SCOPES.join(","),
       response_type: "code",
     });
+    if (config.facebookConfigId) {
+      p.set("config_id", config.facebookConfigId);
+      p.set("override_default_response_type", "true");
+    } else {
+      p.set("scope", FB_ANALYSIS_SCOPES.join(","));
+    }
     return `https://www.facebook.com/${FB_VERSION}/dialog/oauth?${p}`;
   },
 
@@ -318,6 +362,43 @@ export const igApi = {
       igUserId: p.instagram_business_account?.id,
       igUsername: p.instagram_business_account?.username,
     }));
+  },
+
+  // Página do Facebook (própria ou, com o acesso público da Meta, de terceiros): perfil e posts recentes.
+  async pageAnalysisData(pageRef: string, token: string): Promise<PageSource> {
+    const page = await fbGet<RawFbPage>(`/${encodeURIComponent(pageRef)}`, {
+      fields: "id,name,username,about,website,link,fan_count,followers_count,picture{url}",
+      access_token: token,
+    });
+    const posts = await fbGet<{ data: RawFbPost[] }>(`/${encodeURIComponent(page.id)}/posts`, {
+      fields: "id,message,created_time,permalink_url,shares,reactions.limit(0).summary(true),comments.limit(0).summary(true),attachments{media_type}",
+      limit: 50,
+      access_token: token,
+    });
+    const rows = posts.data ?? [];
+    const shares = rows.map((p) => p.shares?.count ?? 0);
+    return {
+      pageId: page.id,
+      profile: {
+        username: page.username ?? page.id,
+        name: page.name,
+        biography: page.about,
+        website: page.website,
+        profilePictureUrl: page.picture?.data?.url,
+        followers: page.followers_count ?? page.fan_count ?? 0,
+        mediaCount: 0,
+      },
+      posts: rows.map((p) => ({
+        id: p.id,
+        caption: p.message,
+        mediaType: fbMediaType(p.attachments?.data?.[0]?.media_type),
+        likes: p.reactions?.summary?.total_count,
+        comments: p.comments?.summary?.total_count,
+        timestamp: p.created_time,
+        permalink: p.permalink_url,
+      })),
+      avgShares: shares.length ? Math.round((shares.reduce((a, b) => a + b, 0) / shares.length) * 10) / 10 : undefined,
+    };
   },
 
   async sendMessage(igUserId: string, token: string, recipientId: string, message: DmMessage): Promise<string> {

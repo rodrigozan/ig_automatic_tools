@@ -1,10 +1,12 @@
 import { Router } from "express";
+import { DateTime } from "luxon";
 import { z } from "zod";
 import { requireAuth, currentUser } from "../middleware/auth";
 import { requireAuthOrAgent } from "../middleware/agentAuth";
 import { HttpError, notFound, parse } from "../lib/errors";
 import { objectId } from "../lib/validation";
 import { ScheduledPost, publicPost, EDITABLE_STATUSES } from "../models/ScheduledPost";
+import { FacebookPage } from "../models/FacebookPage";
 import { validatePost } from "../services/posts";
 import { completeBatchIfDone } from "./batches";
 import { runPublisherTick } from "../services/publisher";
@@ -15,7 +17,9 @@ const statuses = ["draft", "scheduled", "publishing", "published", "failed", "ca
 
 const createSchema = z
   .object({
-    accountId: objectId,
+    accountId: objectId.optional(),
+    destination: z.enum(["instagram", "facebook", "both"]).default("instagram"),
+    facebookPageId: z.string().min(1).optional(),
     type: z.enum(["post", "reel", "carousel"]),
     mediaIds: z.array(objectId),
     caption: z.string().default(""),
@@ -35,6 +39,8 @@ function kickPublisher() {
 const patchSchema = z
   .object({
     accountId: objectId.optional(),
+    destination: z.enum(["instagram", "facebook", "both"]).optional(),
+    facebookPageId: z.string().min(1).optional(),
     type: z.enum(["post", "reel", "carousel"]).optional(),
     mediaIds: z.array(objectId).optional(),
     caption: z.string().optional(),
@@ -43,6 +49,11 @@ const patchSchema = z
     publishNow: z.boolean().optional(),
   })
   .strict();
+
+postsRouter.get("/publishing/facebook-pages", requireAuth, async (req, res) => {
+  const pages = await FacebookPage.find({ userId: currentUser(req)._id }).sort({ name: 1 });
+  res.json(pages.map((p) => ({ pageId: p.pageId, name: p.name })));
+});
 
 postsRouter.get("/posts", requireAuthOrAgent, async (req, res) => {
   const user = currentUser(req);
@@ -55,6 +66,17 @@ postsRouter.get("/posts", requireAuthOrAgent, async (req, res) => {
   if (typeof req.query.from === "string" && !Number.isNaN(Date.parse(req.query.from))) range.$gte = new Date(req.query.from);
   if (typeof req.query.to === "string" && !Number.isNaN(Date.parse(req.query.to))) range.$lt = new Date(req.query.to);
   if (Object.keys(range).length) filter.scheduledAt = range;
+  if (typeof req.query.dates === "string" && req.query.dates) {
+    const dates = [...new Set(req.query.dates.split(","))];
+    if (dates.length > 366) throw new HttpError(400, "invalid", "Selecione no máximo 366 dias.");
+    filter.$or = dates.map((date) => {
+      const day = DateTime.fromISO(date, { zone: user.timezone });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !day.isValid) {
+        throw new HttpError(400, "invalid", "Data inválida no filtro.");
+      }
+      return { scheduledAt: { $gte: day.startOf("day").toJSDate(), $lt: day.plus({ days: 1 }).startOf("day").toJSDate() } };
+    });
+  }
   const order = req.query.order === "desc" ? -1 : 1;
   const limit = Math.min(Number(req.query.limit) || 500, 1000);
   const posts = await ScheduledPost.find(filter).sort({ scheduledAt: order }).limit(limit);
@@ -86,8 +108,16 @@ postsRouter.patch("/posts/:id", requireAuth, async (req, res) => {
   if (!(EDITABLE_STATUSES as readonly string[]).includes(post.status)) {
     throw new HttpError(409, "conflict", post.status === "published" ? "Já publicada, não dá para editar." : "Já em publicação, não dá para editar.");
   }
+  if (post.igMediaId || post.fbPostId) {
+    const contentFields = ["accountId", "destination", "facebookPageId", "type", "mediaIds", "caption"];
+    if (contentFields.some((key) => key in body && JSON.stringify(body[key as keyof typeof body]) !== JSON.stringify(publicPost(post)[key as keyof ReturnType<typeof publicPost>]))) {
+      throw new HttpError(409, "conflict", "Parte da publicação já foi enviada. Reagende sem alterar o conteúdo ou os destinos.");
+    }
+  }
   const next = {
-    accountId: body.accountId ?? String(post.accountId),
+    accountId: body.accountId ?? (post.accountId ? String(post.accountId) : undefined),
+    destination: body.destination ?? post.destination ?? "instagram",
+    facebookPageId: body.facebookPageId ?? post.facebookPageId ?? undefined,
     type: body.type ?? post.type,
     mediaIds: body.mediaIds ?? post.mediaIds.map(String),
     caption: body.caption ?? post.caption ?? "",

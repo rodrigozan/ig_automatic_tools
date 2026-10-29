@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import jwt from "jsonwebtoken";
 import { setupDb, teardownDb, clearDb, startServer, createUser, sessionCookie, client, createAccount, stubIg, restoreIg } from "./helpers";
 import { config } from "../config";
+import { FacebookPage } from "../models/FacebookPage";
 import { InstagramAccount } from "../models/InstagramAccount";
 import { ProfileAnalysis } from "../models/ProfileAnalysis";
 import { IgApiError } from "../services/instagramApi";
@@ -45,7 +46,7 @@ test("métricas: ritmo, engajamento, mistura de conteúdo e atividade", () => {
   assert.equal(m.avgLikes, 50);
   assert.equal(m.avgComments, 3.8); // 15 / 4 arredondado a 1 casa
   assert.equal(m.engagementRate, 5.38); // (50 + 3.75) / 1000
-  assert.deepEqual(m.contentMix, { image: 0.5, reel: 0.25, video: 0, carousel: 0.25 });
+  assert.deepEqual(m.contentMix, { image: 0.5, reel: 0.25, video: 0, carousel: 0.25, text: 0 });
   assert.equal(m.topPosts[0].id, "a");
   assert.equal(m.activity, "irregular"); // 4 posts em 90 dias: menos de 1 por semana
   assert.equal(m.engagementLevel, "high");
@@ -216,9 +217,15 @@ test("conectar o Facebook liga a Página à conta certa e guarda o token cifrado
     { pageId: "p2", pageName: "Minha página", pageToken: "tok-minha", igUserId: acc.igUserId, igUsername: acc.username },
   ] });
   const cookie = sessionCookie(u.id);
+  config.facebookConfigId = "";
   const start = await fetch(`${srv.url}/ig/api/analysis/facebook/connect`, { redirect: "manual", headers: { cookie } });
   assert.match(start.headers.get("location")!, /facebook\.com\/v23\.0\/dialog\/oauth/);
   assert.match(start.headers.get("location")!, /instagram_basic/);
+  config.facebookConfigId = "cfg123";
+  const withConfig = await fetch(`${srv.url}/ig/api/analysis/facebook/connect`, { redirect: "manual", headers: { cookie } });
+  assert.match(withConfig.headers.get("location")!, /config_id=cfg123/);
+  assert.doesNotMatch(withConfig.headers.get("location")!, /scope=/);
+  config.facebookConfigId = "";
   const state = new URL(start.headers.get("location")!).searchParams.get("state")!;
   const stateCookie = start.headers.getSetCookie().find((c) => c.startsWith("ig_fb_analysis="))!.split(";")[0];
   const done = await fetch(`${srv.url}/ig/api/analysis/facebook/callback?code=abc&state=${state}`, { redirect: "manual", headers: { cookie: `${cookie}; ${stateCookie}` } });
@@ -234,14 +241,36 @@ test("conectar o Facebook liga a Página à conta certa e guarda o token cifrado
   assert.match(bad.headers.get("location")!, /erro=falha/);
 });
 
-test("conectar o Facebook sem Página ligada à conta avisa", async () => {
+test("conectar o Facebook sem Instagram ligado a Página guarda as Páginas e avisa", async () => {
   const u = await createUser();
   await createAccount(u._id);
-  stubIg({ fbPages: async () => [{ pageId: "p1", pageName: "Outra", pageToken: "t", igUserId: "999", igUsername: "alguem" }] });
+  stubIg({ fbPages: async () => [{ pageId: "p1", pageName: "Outra", pageToken: "t" }] });
   const cookie = sessionCookie(u.id);
   const start = await fetch(`${srv.url}/ig/api/analysis/facebook/connect`, { redirect: "manual", headers: { cookie } });
   const state = new URL(start.headers.get("location")!).searchParams.get("state")!;
   const stateCookie = start.headers.getSetCookie().find((c) => c.startsWith("ig_fb_analysis="))!.split(";")[0];
   const done = await fetch(`${srv.url}/ig/api/analysis/facebook/callback?code=abc&state=${state}`, { redirect: "manual", headers: { cookie: `${cookie}; ${stateCookie}` } });
-  assert.match(done.headers.get("location")!, /erro=sem_pagina/);
+  assert.match(done.headers.get("location")!, /conectado=paginas/);
+  assert.equal(await FacebookPage.countDocuments({ userId: u._id, pageId: "p1" }), 1);
+
+  stubIg({ fbPages: async () => [] });
+  const start2 = await fetch(`${srv.url}/ig/api/analysis/facebook/connect`, { redirect: "manual", headers: { cookie } });
+  const state2 = new URL(start2.headers.get("location")!).searchParams.get("state")!;
+  const stateCookie2 = start2.headers.getSetCookie().find((c) => c.startsWith("ig_fb_analysis="))!.split(";")[0];
+  const none = await fetch(`${srv.url}/ig/api/analysis/facebook/callback?code=abc&state=${state2}`, { redirect: "manual", headers: { cookie: `${cookie}; ${stateCookie2}` } });
+  assert.match(none.headers.get("location")!, /erro=sem_pagina/);
+});
+
+test("sem vínculo da própria conta, o Instagram de outra Página do usuário serve de ponto de partida", async () => {
+  const u = await createUser();
+  await createAccount(u._id);
+  stubIg({ fbPages: async () => [{ pageId: "p9", pageName: "Outra", pageToken: "tok-outra", igUserId: "999", igUsername: "alguem" }] });
+  const cookie = sessionCookie(u.id);
+  const start = await fetch(`${srv.url}/ig/api/analysis/facebook/connect`, { redirect: "manual", headers: { cookie } });
+  const state = new URL(start.headers.get("location")!).searchParams.get("state")!;
+  const stateCookie = start.headers.getSetCookie().find((c) => c.startsWith("ig_fb_analysis="))!.split(";")[0];
+  const done = await fetch(`${srv.url}/ig/api/analysis/facebook/callback?code=abc&state=${state}`, { redirect: "manual", headers: { cookie: `${cookie}; ${stateCookie}` } });
+  assert.match(done.headers.get("location")!, /conectado=1/);
+  const overview = await client(srv.url, cookie).get("/analysis");
+  assert.equal(overview.body.facebook.connected, true);
 });

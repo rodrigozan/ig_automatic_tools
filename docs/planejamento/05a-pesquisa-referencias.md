@@ -1,4 +1,4 @@
-# Pesquisa de referências: IG Automatic Tools
+# Pesquisa de referências: Phanter Tools
 
 Data da pesquisa: 24/10/2026. Plataforma de todas as referências: web.
 
@@ -119,7 +119,7 @@ Descartadas como referência de interface por falta de fonte confiável sobre o 
 ## 7. Mapa de oportunidades
 
 - Correção do que eu havia escrito antes: o envio em massa de vídeo não é uma lacuna do mercado. Metricool e Hopper HQ aceitam vídeo, carrossel e Reels por planilha, e Buffer anuncia CSV.
-- Onde o IG Automatic Tools se diferencia:
+- Onde o Phanter Tools se diferencia:
   - Nada de planilha nem URL pública: você sobe os vídeos direto e escreve a legenda numa tela de revisão, com reordenação e horário editável.
   - A agenda padrão preenche os horários sozinha.
   - O app converte o vídeo quando está fora do formato, em vez de falhar ou cair em notificação.

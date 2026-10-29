@@ -1,3 +1,5 @@
+import { FacebookPage } from "../models/FacebookPage";
+import { decrypt, Encrypted } from "../lib/crypto";
 import { Types } from "mongoose";
 import { config, limits } from "../config";
 import { ScheduledPost, ScheduledPostDoc } from "../models/ScheduledPost";
@@ -81,19 +83,34 @@ export async function publishPost(postId: Types.ObjectId | string, now = new Dat
   const post = await ScheduledPost.findOneAndUpdate({ _id: postId, status: "scheduled" }, { $set: { status: "publishing" } }, { new: true });
   if (!post) return null;
   const account = await InstagramAccount.findById(post.accountId);
+  let publishingInstagram = false;
   try {
-    if (!account || account.disconnectedAt || account.status !== "connected") {
+    const needsInstagram = post.destination !== "facebook" && !post.igMediaId;
+    if (needsInstagram && (!account || account.disconnectedAt || account.status !== "connected")) {
       throw new IgApiError("A conta do Instagram precisa ser reconectada.");
     }
     const media = await loadMedia(post);
     if (media.some((m) => !m || m.deletedAt)) throw new IgApiError("Uma das mídias foi apagada.");
-    const token = accessToken(account);
-    const containerId = await createContainers(post, media as MediaDoc[], account.igUserId, token);
-    post.igContainerId = containerId;
-    await waitContainer(containerId, token);
-    const mediaId = await igApi.publishContainer(account.igUserId, token, containerId);
-    post.igMediaId = mediaId;
-    post.permalink = await igApi.permalink(mediaId, token).catch(() => undefined);
+    if (needsInstagram && account) {
+      publishingInstagram = true;
+      const token = accessToken(account);
+      const containerId = await createContainers(post, media as MediaDoc[], account.igUserId, token);
+      post.igContainerId = containerId;
+      await waitContainer(containerId, token);
+      const mediaId = await igApi.publishContainer(account.igUserId, token, containerId);
+      post.igMediaId = mediaId;
+      await post.save();
+      post.permalink = await igApi.permalink(mediaId, token).catch(() => undefined);
+      await post.save();
+      publishingInstagram = false;
+    }
+    if ((post.destination === "facebook" || post.destination === "both") && !post.fbPostId) {
+      const page = await FacebookPage.findOne({ userId: post.userId, pageId: post.facebookPageId });
+      if (!page) throw new IgApiError("Reconecte a Página do Facebook antes de publicar.");
+      post.fbPostId = await igApi.publishFacebook(page.pageId, decrypt(page.tokenEnc as Encrypted), post.type, (media as MediaDoc[]).map(publicMediaUrl), post.caption ?? "");
+      post.fbPermalink = `https://www.facebook.com/${post.fbPostId}`;
+      await post.save();
+    }
     post.status = "published";
     post.publishedAt = new Date();
     post.lastError = undefined;
@@ -105,21 +122,23 @@ export async function publishPost(postId: Types.ObjectId | string, now = new Dat
       m.deletedAt = new Date();
       await m.save();
     }
-    const usage = await publishUsage(account, new Date());
-    if (usage.near) {
-      await notify(
-        account.userId,
-        "limit_near",
-        `@${account.username} usou ${usage.used} de ${usage.limit} publicações permitidas pela Meta nas últimas 24 horas.`,
-        account.id,
-        { dedupe: true }
-      );
+    if (account && post.destination !== "facebook") {
+      const usage = await publishUsage(account, new Date());
+      if (usage.near) {
+        await notify(
+          account.userId,
+          "limit_near",
+          `@${account.username} usou ${usage.used} de ${usage.limit} publicações permitidas pela Meta nas últimas 24 horas.`,
+          account.id,
+          { dedupe: true }
+        );
+      }
     }
     for (const hook of postFinalHooks) await hook(post);
     return post;
   } catch (err) {
     const e = err as IgApiError;
-    if (e instanceof IgApiError && e.tokenInvalid && account) await markExpired(account);
+    if (e instanceof IgApiError && e.tokenInvalid && account && publishingInstagram) await markExpired(account);
     post.attempts = (post.attempts ?? 0) + 1;
     post.lastError = e.message ?? "Erro desconhecido.";
     if (post.attempts >= MAX_ATTEMPTS) {
@@ -149,13 +168,13 @@ export async function runPublisherTick(now = new Date()) {
     for (const post of due) {
       const media = await loadMedia(post);
       const broken = media.find((m) => !m || m.deletedAt || m.conversionStatus === "failed");
-      if (broken) {
+      if (media.some((m) => !m || m.deletedAt || m.conversionStatus === "failed")) {
         await failPost(post, broken?.conversionError ?? "Uma das mídias não está disponível.");
         continue;
       }
       if (media.some((m) => !READY_STATUSES.includes(m!.conversionStatus as (typeof READY_STATUSES)[number]))) continue;
       const account = await InstagramAccount.findById(post.accountId);
-      if (account) {
+      if (account && post.destination !== "facebook" && !post.igMediaId) {
         const usage = await publishUsage(account, now);
         if (usage.full) {
           post.nextAttemptAt = usage.freeAt ?? new Date(now.getTime() + RETRY_DELAY_MS);
@@ -183,7 +202,7 @@ export async function recoverOnStartup(now = new Date()) {
   for (const post of late) await failPost(post, "Atrasada: o horário passou há mais de 1 hora. Reagende.");
   const stuck = await ScheduledPost.find({ status: "publishing" });
   for (const post of stuck) {
-    await failPost(post, "Publicação interrompida por reinício do serviço. Confira no Instagram antes de reagendar.");
+    await failPost(post, "Publicação interrompida por reinício do serviço. Confira nas redes selecionadas antes de reagendar.");
   }
   await runPublisherTick(now);
 }

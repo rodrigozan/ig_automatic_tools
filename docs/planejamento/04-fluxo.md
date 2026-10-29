@@ -1,4 +1,4 @@
-# Fluxo: IG Automatic Tools
+# Fluxo: Phanter Tools
 
 Camadas: Frontend (React) > API (`/ig/api`) > MongoDB. Não há mobile. Todo passo aponta para um endpoint do documento 03.
 

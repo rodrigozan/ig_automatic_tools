@@ -1,5 +1,6 @@
+import { AppBrand } from '../components/AppBrand'
 import { Navigate, useSearchParams } from 'react-router-dom'
-import { AlertCircle, Film } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { ThemeSwitcher } from '../components/ThemeSwitcher'
 
@@ -46,8 +47,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm rounded-card border border-card-border bg-surface p-6">
         <div className="mb-6 flex items-center gap-2">
-          <Film size={20} className="text-brand" aria-hidden />
-          <span className="text-lg font-semibold">IG Automatic Tools</span>
+          <AppBrand className="text-lg" />
         </div>
         <h1 className="text-2xl font-semibold">Entrar</h1>
         <p className="mt-1 mb-6 text-muted">Agende publicações e automatize DMs do seu Instagram.</p>

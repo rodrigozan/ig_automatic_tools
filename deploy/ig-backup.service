@@ -1,5 +1,5 @@
 [Unit]
-Description=Backup diário do IG Automatic Tools
+Description=Backup diário do Phanter Tools
 After=mongod.service
 
 [Service]

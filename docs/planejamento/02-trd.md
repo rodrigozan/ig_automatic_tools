@@ -1,4 +1,4 @@
-# TRD: IG Automatic Tools
+# TRD: Phanter Tools
 
 ## Geral
 
@@ -6,7 +6,7 @@
 - Gerenciador de pacotes: yarn
 - Tudo roda no VPS do Rod (phanterai). Sem custo extra de hospedagem na v1.
 - Endereço público: Tailscale Funnel na porta 10000, em `https://phanterai.tailc5aaf7.ts.net:10000/ig`. O app que já usa a porta 10000 (Next.js, porta 3000) continua em `/`. Escolha do Rod, após constatar que as portas 443, 8443 e 10000 do Funnel já estão em uso.
-- Mesma origem: o app Next.js da porta 3000 (do Rod, usado só por ele) e o IG Automatic Tools dividem a origem no navegador pelo Funnel na porta 10000. O risco foi aceito pelo Rod na v1 (24/10/2026). Antes de qualquer pessoa de fora entrar (testers), o domínio próprio com Caddy, em outra origem, passa a ser obrigatório.
+- Mesma origem: o app Next.js da porta 3000 (do Rod, usado só por ele) e o Phanter Tools dividem a origem no navegador pelo Funnel na porta 10000. O risco foi aceito pelo Rod na v1 (24/10/2026). Antes de qualquer pessoa de fora entrar (testers), o domínio próprio com Caddy, em outra origem, passa a ser obrigatório.
 - Prefixo `/ig`: painel, API e webhooks funcionam sob esse prefixo. A API escuta em `127.0.0.1:3930` (porta livre no VPS).
 - Revisão de app da Meta (App Review) e verificação do negócio: fora da v1, por escolha do Rod (23/10/2026). A v1 roda em modo de desenvolvimento, só com o Rod e os testers.
 
@@ -39,8 +39,8 @@ Todas as credenciais ficam no `.env` do VPS, sob guarda do Rod. Nunca no Git nem
 
 - API do Instagram (Meta), com **login do Instagram**: conta profissional (Creator ou Business), sem Página do Facebook. Serve para publicar posts, reels e carrosséis, receber comentários e DMs por webhook e responder DMs.
 - Login com Facebook (Meta): entrada no app. Usa o mesmo app da Meta.
-- Login com Google: entrada no app. Credenciais OAuth próprias do IG Automatic Tools.
-- App da Meta: um app novo e dedicado ao IG Automatic Tools, na conta de desenvolvedor que o Rod já tem.
+- Login com Google: entrada no app. Credenciais OAuth próprias do Phanter Tools.
+- App da Meta: um app novo e dedicado ao Phanter Tools, na conta de desenvolvedor que o Rod já tem.
 - Webhooks da Meta: `https://phanterai.tailc5aaf7.ts.net:10000/ig/api/webhooks/instagram`, com verificação da assinatura de cada chamada.
 
 ### Publicação e agendamento

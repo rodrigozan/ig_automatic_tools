@@ -17,7 +17,7 @@ export const engagementLabel: Record<EngagementLevel, { text: string; tone: 'suc
   unknown: { text: 'Sem dados', tone: 'neutral' },
 }
 
-const kindLabel: Record<ContentKind, string> = { image: 'imagem', reel: 'reels', video: 'vídeo', carousel: 'carrossel' }
+const kindLabel: Record<ContentKind, string> = { image: 'imagem', reel: 'reels', video: 'vídeo', carousel: 'carrossel', text: 'texto/link' }
 
 export function mixText(m: ProfileMetrics) {
   const parts = (Object.keys(m.contentMix) as ContentKind[])
@@ -45,6 +45,18 @@ export const numericRows: NumericRow[] = [
   { key: 'lastPost', label: 'Último post', better: 'low', value: (m) => m.daysSinceLastPost, show: lastPostText },
   { key: 'likes', label: 'Curtidas por post', better: 'high', value: (m) => m.avgLikes, show: (m) => (m.avgLikes === undefined ? '—' : nf.format(m.avgLikes)) },
   { key: 'comments', label: 'Comentários por post', better: 'high', value: (m) => m.avgComments, show: (m) => (m.avgComments === undefined ? '—' : nf.format(m.avgComments)) },
+  { key: 'engagement', label: 'Engajamento por post', better: 'high', value: (m) => m.engagementRate, show: (m) => (m.engagementRate === undefined ? '—' : `${nf.format(m.engagementRate)}%`) },
+]
+
+// Mesmo comparativo, para Páginas do Facebook: reações e compartilhamentos no lugar de curtidas, e sem contagem de posts do perfil.
+export const pageRows: NumericRow[] = [
+  { key: 'followers', label: 'Seguidores', better: 'high', value: (m) => m.followers, show: (m) => compact.format(m.followers) },
+  { key: 'perWeek', label: 'Posts por semana', better: 'high', value: (m) => m.postsPerWeek, show: (m) => nf.format(m.postsPerWeek) },
+  { key: 'last30', label: 'Posts nos últimos 30 dias', better: 'high', value: (m) => m.postsLast30d, show: (m) => nf.format(m.postsLast30d) },
+  { key: 'lastPost', label: 'Último post', better: 'low', value: (m) => m.daysSinceLastPost, show: lastPostText },
+  { key: 'likes', label: 'Reações por post', better: 'high', value: (m) => m.avgLikes, show: (m) => (m.avgLikes === undefined ? '—' : nf.format(m.avgLikes)) },
+  { key: 'comments', label: 'Comentários por post', better: 'high', value: (m) => m.avgComments, show: (m) => (m.avgComments === undefined ? '—' : nf.format(m.avgComments)) },
+  { key: 'shares', label: 'Compartilhamentos por post', better: 'high', value: (m) => m.avgShares, show: (m) => (m.avgShares === undefined ? '—' : nf.format(m.avgShares)) },
   { key: 'engagement', label: 'Engajamento por post', better: 'high', value: (m) => m.engagementRate, show: (m) => (m.engagementRate === undefined ? '—' : `${nf.format(m.engagementRate)}%`) },
 ]
 

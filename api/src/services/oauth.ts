@@ -36,9 +36,14 @@ export const oauth = {
       client_id: config.facebookAppId,
       redirect_uri: callbackUrl("facebook"),
       state,
-      scope: "email,public_profile",
       response_type: "code",
     });
+    if (config.facebookConfigId) {
+      p.set("config_id", config.facebookConfigId);
+      p.set("override_default_response_type", "true");
+    } else {
+      p.set("scope", "email,public_profile");
+    }
     return `https://www.facebook.com/${FB_VERSION}/dialog/oauth?${p}`;
   },
 

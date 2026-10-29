@@ -1,4 +1,4 @@
-# Esquema do back-end: IG Automatic Tools
+# Esquema do back-end: Phanter Tools
 
 Banco: MongoDB com mongoose, banco `ig-automatic-tools`. Todos os modelos têm `createdAt` e `updatedAt` automáticos (`timestamps: true`), salvo onde indicado.
 

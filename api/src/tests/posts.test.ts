@@ -245,3 +245,65 @@ test("avisos: listar, marcar como lido e apagar só os próprios", async () => {
   assert.equal((await c.del(`/notifications/${n2.id}`)).status, 404);
   assert.equal((await c.del(`/notifications/${n.id}`)).status, 204);
 });
+
+test("filtro por dias combina conta e situação e respeita meia-noite no fuso do usuário", async () => {
+  const { u, acc, img, c } = await setup();
+  const otherAccount = await createAccount(u._id);
+  const otherUser = await createUser();
+  const make = (scheduledAt: string, extra = {}) => ScheduledPost.create({ userId: u._id, accountId: acc._id, type: "post", mediaIds: [img._id], status: "scheduled", caption: scheduledAt, scheduledAt: new Date(scheduledAt), ...extra });
+  await make("2026-10-27T02:59:59.999Z"); // ainda dia 26
+  const start = await make("2026-10-27T03:00:00.000Z");
+  const end = await make("2026-10-28T02:59:59.999Z");
+  await make("2026-10-28T03:00:00.000Z");
+  const later = await make("2026-10-30T15:00:00.000Z");
+  await make("2026-10-27T15:00:00.000Z", { status: "failed" });
+  await make("2026-10-27T15:00:00.000Z", { accountId: otherAccount._id });
+  await make("2026-10-27T15:00:00.000Z", { userId: otherUser._id });
+  const query = `&status=scheduled&accountId=${acc.id}&order=desc`;
+  const single = await c.get(`/posts?dates=2026-10-27${query}`);
+  assert.equal(single.status, 200);
+  assert.deepEqual(single.body.map((p: { id: string }) => p.id), [end.id, start.id]);
+  const multi = await c.get(`/posts?dates=2026-10-27,2026-10-30${query}`);
+  assert.deepEqual(multi.body.map((p: { id: string }) => p.id), [later.id, end.id, start.id]);
+  assert.equal((await c.get("/posts?dates=2026-02-30")).status, 400);
+  assert.equal((await c.get("/posts?dates=invalid")).status, 400);
+});
+
+
+test("Facebook sem Instagram: valida Página e publica apenas no Facebook", async () => {
+  const { FacebookPage } = await import("../models/FacebookPage");
+  const { encrypt } = await import("../lib/crypto");
+  const { u, img, c } = await setup();
+  const page = await FacebookPage.create({ userId: u._id, pageId: "page1", name: "Minha Página", tokenEnc: encrypt("page-token") });
+  const base = { destination: "facebook", facebookPageId: page.pageId, type: "post", mediaIds: [img.id], scheduledAt: inMinutes(10) };
+  assert.equal((await c.post("/posts", { ...base, facebookPageId: "unknown" })).status, 400);
+  const other = client(srv.url, sessionCookie((await createUser()).id));
+  assert.deepEqual((await other.get("/publishing/facebook-pages")).body, []);
+  const created = await c.post("/posts", base);
+  assert.equal(created.status, 201);
+  stubIg({ publishFacebook: async (...args) => { calls.push({ method: "facebook", args }); return "fb1"; } });
+  await publishPost(created.body.id);
+  const post = await ScheduledPost.findById(created.body.id);
+  assert.equal(post?.status, "published");
+  assert.equal(post?.fbPostId, "fb1");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].args[1], "page-token");
+});
+
+test("ambos: falha no Facebook preserva mídia e não repete publicação no Instagram", async () => {
+  const { FacebookPage } = await import("../models/FacebookPage");
+  const { encrypt } = await import("../lib/crypto");
+  const { u, acc, img, c } = await setup();
+  await FacebookPage.create({ userId: u._id, pageId: "page2", name: "Página", tokenEnc: encrypt("token") });
+  const created = await c.post("/posts", { accountId: acc.id, destination: "both", facebookPageId: "page2", type: "post", mediaIds: [img.id], scheduledAt: inMinutes(10) });
+  assert.equal(created.status, 201);
+  stubIg({ publishFacebook: async () => { throw new IgApiError("Facebook indisponível", 190); } });
+  await publishPost(created.body.id);
+  assert.equal((await InstagramAccount.findById(acc.id))?.status, "connected");
+  assert.ok(!(await Media.findById(img.id))?.deletedAt);
+  assert.equal((await c.patch(`/posts/${created.body.id}`, { caption: "outro conteúdo" })).status, 409);
+  stubIg({ publishFacebook: async () => "fb2" });
+  await publishPost(created.body.id);
+  assert.equal((await ScheduledPost.findById(created.body.id))?.status, "published");
+  assert.equal(calls.filter((c) => c.method === "publishContainer").length, 1);
+});

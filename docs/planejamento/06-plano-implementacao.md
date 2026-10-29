@@ -1,4 +1,4 @@
-# Plano de implementação: IG Automatic Tools
+# Plano de implementação: Phanter Tools
 
 Formatado para agentes do Claude Code. Cada etapa traz: o que entra, o que sai e como testar. Documentos de base: `01-prd.md`, `02-trd.md`, `03-esquema-backend.md`, `04-fluxo.md`, `05-briefing-design.md`.
 
@@ -277,7 +277,7 @@ Como testar:
 Entra:
 - Build de produção do Frontend, serviço do systemd habilitado, Funnel apontando para `/ig`, variáveis de produção conferidas.
 - Marcar a versão no Git com uma tag (`v1.0.0`).
-- Bloqueio antes dos testers: o app da porta 3000 e o IG Automatic Tools dividem a mesma origem pelo Funnel. Enquanto só o Rod usa, o risco está aceito (24/10/2026). Antes de adicionar qualquer tester, migrar para domínio próprio com Caddy (outra origem, certificado automático, portas 80 e 443 abertas) e atualizar as URLs de retorno do Google, do Facebook e do Instagram, o webhook da Meta e o `PUBLIC_BASE_URL`. **Ação do Rod:** escolher o domínio e criar o subdomínio apontando para o VPS.
+- Bloqueio antes dos testers: o app da porta 3000 e o Phanter Tools dividem a mesma origem pelo Funnel. Enquanto só o Rod usa, o risco está aceito (24/10/2026). Antes de adicionar qualquer tester, migrar para domínio próprio com Caddy (outra origem, certificado automático, portas 80 e 443 abertas) e atualizar as URLs de retorno do Google, do Facebook e do Instagram, o webhook da Meta e o `PUBLIC_BASE_URL`. **Ação do Rod:** escolher o domínio e criar o subdomínio apontando para o VPS.
 - Meta em modo de desenvolvimento, só com o Rod e os testers adicionados no app.
 - Acompanhar o sinal de sucesso do PRD: 2 semanas sem abrir o app do Instagram para publicar.
 

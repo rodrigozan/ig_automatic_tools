@@ -1,7 +1,7 @@
 # Relatório de Análise e Melhoria: Automação de DMs (Instagram)
 
 ## 1. Diagnóstico Atual
-A automação de DMs do `ig-automatic-tools` possui uma arquitetura **reativa e frágil**. Ela depende exclusivamente de webhooks do Meta e de buscas simples no banco de dados, o que a torna suscetível a falhas silenciosas.
+A automação de DMs do Phanter Tools possui uma arquitetura **reativa e frágil**. Ela depende exclusivamente de webhooks do Meta e de buscas simples no banco de dados, o que a torna suscetível a falhas silenciosas.
 
 ### Pontos Críticos Identificados:
 - **Dependência Passiva:** Se o webhook do Meta falhar ou a permissão `instagram_manage_messages` não estiver aprovada, a automação não inicia.
@@ -11,7 +11,7 @@ A automação de DMs do `ig-automatic-tools` possui uma arquitetura **reativa e 
 
 ---
 
-## 2. Comparativo: ig-automatic-tools vs. ChatbotX
+## 2. Comparativo: Phanter Tools vs. ChatbotX
 O **ChatbotX** utiliza um conceito de **Connections Lifecycle**, tratando a conta não como um registro no banco, mas como uma conexão ativa e monitorada.
 
 | Recurso | ig-automatic-tools | ChatbotX | Impacto |
@@ -24,7 +24,7 @@ O **ChatbotX** utiliza um conceito de **Connections Lifecycle**, tratando a cont
 ---
 
 ## 3. Plano de Implementação para Robustez
-Para elevar o `ig-automatic-tools` ao nível profissional, propõe-se as seguintes melhorias:
+Para elevar o Phanter Tools ao nível profissional, propõe-se as seguintes melhorias:
 
 ### A. Camada de Connection Manager
 - **Validação Ativa:** Implementar check de token (`/me`) antes de disparos críticos.

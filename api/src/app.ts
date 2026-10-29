@@ -53,6 +53,9 @@ export function createApp() {
   api.use(["/auth/google", "/auth/facebook", "/instagram/connect", "/instagram/callback"], loginLimiter);
   api.use("/media", uploadLimiter);
   api.use(writeLimiter);
+  api.get("/config", (_req, res) => {
+    res.set("Cache-Control", "no-store").json({ appName: config.appName });
+  });
   api.use(healthRouter);
   api.use(authRouter);
   api.use(usersRouter);

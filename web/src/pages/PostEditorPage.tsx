@@ -5,7 +5,7 @@ import { api, errorInfo } from '../lib/api'
 import { useAccounts } from '../lib/accounts'
 import { useAuth } from '../lib/auth'
 import { formatDateTime, zonedParts, zonedToUtc } from '../lib/format'
-import type { MediaItem, Post, PostType } from '../lib/types'
+import type { MediaItem, Post, PostType, PostDestination } from '../lib/types'
 import { Button, Card, ConfirmDialog, ErrorCard, Field, FormError, Input, PageHeader, PostStatusTag, Select, Skeleton, Textarea } from '../components/ui'
 import { ConversionTag, MediaThumb, Uploader, useMediaStatus } from '../components/media'
 import { LimitBanner, ReconnectBanners } from '../components/AccountBanners'
@@ -36,6 +36,9 @@ export default function PostEditorPage() {
   const [post, setPost] = useState<Post | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [accountId, setAccountId] = useState('')
+  const [destination, setDestination] = useState<PostDestination>('instagram')
+  const [facebookPageId, setFacebookPageId] = useState('')
+  const [pages, setPages] = useState<{ pageId: string; name: string }[]>([])
   const [type, setType] = useState<PostType>('post')
   const [selected, setSelected] = useState<string[]>([])
   const [caption, setCaption] = useState('')
@@ -53,11 +56,16 @@ export default function PostEditorPage() {
   const load = useCallback(async () => {
     setLoadError(false)
     try {
+      const pageList = await api.get<{ pageId: string; name: string }[]>('/publishing/facebook-pages')
+      setPages(pageList.data)
+      if (!id && pageList.data.length === 1) setFacebookPageId(pageList.data[0].pageId)
       const lib = await api.get<MediaItem[]>('/media')
       let items = lib.data
       if (id) {
         const r = await api.get<Post>(`/posts/${id}`)
         setPost(r.data)
+        setDestination(r.data.destination ?? 'instagram')
+        setFacebookPageId(r.data.facebookPageId ?? '')
         setAccountId(r.data.accountId)
         setType(r.data.type)
         setSelected(r.data.mediaIds)
@@ -143,7 +151,9 @@ export default function PostEditorPage() {
     setError({ fields: {} })
     const now = status === 'now'
     const body = {
-      accountId,
+      ...(destination !== 'facebook' ? { accountId } : {}),
+      destination,
+      ...(destination !== 'instagram' ? { facebookPageId } : {}),
       type,
       mediaIds: selected,
       caption,
@@ -199,6 +209,7 @@ export default function PostEditorPage() {
         actions={
           <>
             {post && <PostStatusTag status={post.status} />}
+            {post?.fbPermalink && <a href={post.fbPermalink} target="_blank" rel="noreferrer" className="text-sm font-medium text-brand underline">Ver no Facebook</a>}
             {post?.permalink && (
               <a href={post.permalink} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-1 text-sm font-medium text-brand underline">
                 Ver no Instagram <ExternalLink size={14} aria-hidden />
@@ -208,14 +219,28 @@ export default function PostEditorPage() {
         }
       />
       <ReconnectBanners />
-      <LimitBanner accountId={accountId} />
+      {destination !== 'facebook' && <LimitBanner accountId={accountId} />}
       {post?.status === 'failed' && post.lastError && <FormError message={`Falhou: ${post.lastError} Escolha um novo horário e salve para reagendar.`} />}
       {locked && <p className="mb-4 rounded-control bg-raised px-3 py-2 text-sm text-muted">{lockReason}</p>}
       <FormError message={error.message} />
 
       <fieldset disabled={Boolean(locked)} className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <Card className="flex flex-col gap-4 p-5">
-          <Field label="Conta" error={error.fields.accountId}>
+          <Field label="Publicar em" error={error.fields.destination}>
+            {(fid, d) => <Select id={fid} aria-describedby={d} value={destination} onChange={(e) => (touch(), setDestination(e.target.value as PostDestination))}>
+              <option value="instagram">Instagram</option>
+              <option value="facebook">Facebook</option>
+              <option value="both">Instagram e Facebook</option>
+            </Select>}
+          </Field>
+          {destination !== 'instagram' && <Field label="Página do Facebook" error={error.fields.facebookPageId} hint={pages.length === 0 ? 'Conecte o Facebook na tela de Análises para escolher uma Página.' : undefined}>
+            {(fid, d) => <Select id={fid} aria-describedby={d} aria-invalid={Boolean(error.fields.facebookPageId)} value={facebookPageId} onChange={(e) => (touch(), setFacebookPageId(e.target.value))}>
+              <option value="">Escolha uma Página</option>
+              {pages.map((p) => <option key={p.pageId} value={p.pageId}>{p.name}</option>)}
+            </Select>}
+          </Field>}
+          {destination !== 'instagram' && type === 'carousel' && <p className="text-sm text-muted">No Facebook, o carrossel aceita apenas imagens.</p>}
+          {destination !== 'facebook' && <Field label="Conta do Instagram" error={error.fields.accountId}>
             {(fid, d) => (
               <Select id={fid} aria-describedby={d} aria-invalid={Boolean(error.fields.accountId)} value={accountId} onChange={(e) => (touch(), setAccountId(e.target.value))}>
                 {connected.length === 0 && <option value="">Nenhuma conta conectada</option>}
@@ -227,7 +252,7 @@ export default function PostEditorPage() {
                 ))}
               </Select>
             )}
-          </Field>
+          </Field>}
 
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium" id="tipo-label">
@@ -361,7 +386,7 @@ export default function PostEditorPage() {
       </div>
 
       <ConfirmDialog open={leaveOpen} title="Descartar mudanças?" message="O que você preencheu será perdido." confirmLabel="Descartar" danger onClose={() => setLeaveOpen(false)} onConfirm={() => navigate('/publicacoes')} />
-      <ConfirmDialog open={nowOpen} title="Publicar agora?" message="A publicação vai para o Instagram em instantes, ignorando a data e a hora preenchidas." confirmLabel="Publicar agora" onClose={() => setNowOpen(false)} onConfirm={() => (setNowOpen(false), submit('now'))} />
+      <ConfirmDialog open={nowOpen} title="Publicar agora?" message={`A publicação vai para ${destination === 'both' ? 'Instagram e Facebook' : destination === 'facebook' ? 'o Facebook' : 'o Instagram'} em instantes, ignorando a data e a hora preenchidas.`} confirmLabel="Publicar agora" onClose={() => setNowOpen(false)} onConfirm={() => (setNowOpen(false), submit('now'))} />
       <ConfirmDialog open={cancelOpen} title="Cancelar esta publicação?" message="Ela não será publicada. O arquivo é apagado em 7 dias." confirmLabel="Cancelar publicação" danger onClose={() => setCancelOpen(false)} onConfirm={cancelPost} />
     </div>
   )

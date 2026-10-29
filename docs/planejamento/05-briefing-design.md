@@ -1,4 +1,4 @@
-# Briefing de design: IG Automatic Tools
+# Briefing de design: Phanter Tools
 
 Aplica-se só ao Frontend (web). A API não tem seção e o app não terá mobile. A versão para celular é o mesmo painel web, responsivo.
 

@@ -10,6 +10,8 @@ import { Button, Card, EmptyState, ErrorCard, PageHeader, PostStatusTag, Select,
 import { ReconnectBanners } from '../components/AccountBanners'
 import { WeekCalendar, addDays, startOfWeek } from '../components/WeekCalendar'
 
+import { PostDateFilter } from '../components/PostDateFilter'
+
 const typeLabel = { post: 'Post', reel: 'Reel', carousel: 'Carrossel' }
 
 export default function PostsPage() {
@@ -20,6 +22,7 @@ export default function PostsPage() {
   const [view, setView] = useState<'list' | 'week'>('list')
   const [status, setStatus] = useState('scheduled,failed,draft,publishing')
   const [accountId, setAccountId] = useState('')
+  const [dates, setDates] = useState<string[]>([])
   const [weekStart, setWeekStart] = useState(() => startOfWeek(zonedParts(new Date(), tz).date))
 
   const qs = new URLSearchParams()
@@ -29,6 +32,7 @@ export default function PostsPage() {
     qs.set('from', zonedToUtc(weekStart, '00:00', tz))
     qs.set('to', zonedToUtc(addDays(weekStart, 7), '00:00', tz))
   }
+  if (dates.length && view === 'list') qs.set('dates', dates.join(','))
   if (view === 'list') qs.set('order', 'desc')
   const { data, loading, error, reload } = useFetch<Post[]>(`/posts?${qs}`)
   const posts = data ?? []
@@ -77,6 +81,7 @@ export default function PostsPage() {
             </option>
           ))}
         </Select>
+        {view === 'list' && <PostDateFilter dates={dates} onChange={setDates} today={zonedParts(new Date(), tz).date} />}
       </div>
       <Card>
         {loading && !data ? (
@@ -89,7 +94,7 @@ export default function PostsPage() {
           <WeekCalendar weekStart={weekStart} onChange={setWeekStart} posts={posts} accounts={accounts} timeZone={tz} />
         ) : posts.length === 0 ? (
           <EmptyState
-            text="Nenhuma publicação ainda"
+            text={dates.length ? "Nenhuma publicação nas datas selecionadas" : "Nenhuma publicação ainda"}
             action={
               <>
                 <Button variant="primary" onClick={() => navigate('/publicacoes/nova')}>
@@ -106,7 +111,7 @@ export default function PostsPage() {
                 <Link to={`/publicacoes/${p.id}`} className="flex min-h-[45px] flex-wrap items-center gap-x-4 gap-y-1 px-5 py-2 hover:bg-raised">
                   <span className="w-28 text-sm font-medium tabular-nums">{formatDateTime(p.scheduledAt, tz)}</span>
                   <span className="w-20 text-sm text-muted">{typeLabel[p.type]}</span>
-                  <span className="w-36 truncate text-sm text-muted">@{accounts.find((a) => a.id === p.accountId)?.username ?? '—'}</span>
+                  <span className="w-36 truncate text-sm text-muted">{p.destination === 'facebook' ? 'Facebook' : `@${accounts.find((a) => a.id === p.accountId)?.username ?? '—'}${p.destination === 'both' ? ' · Facebook' : ''}`}</span>
                   <span className="min-w-0 flex-1 truncate text-sm">{p.caption || <span className="text-faint">Sem legenda</span>}</span>
                   <PostStatusTag status={p.status} />
                 </Link>

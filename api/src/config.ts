@@ -6,6 +6,7 @@ dotenv.config({ path: path.resolve(__dirname, "..", ".env"), quiet: true });
 const env = process.env;
 
 export const config = {
+  appName: env.APP_NAME?.trim() || "Phanter Tools",
   env: env.NODE_ENV || "development",
   port: Number(env.PORT || 3930),
   host: env.HOST || "127.0.0.1",
@@ -26,6 +27,8 @@ export const config = {
   googleClientSecret: env.GOOGLE_CLIENT_SECRET || "",
   facebookAppId: env.FACEBOOK_APP_ID || "",
   facebookAppSecret: env.FACEBOOK_APP_SECRET || "",
+  // Login do Facebook para Empresas: as permissões vêm da configuração (config_id), não de scope.
+  facebookConfigId: env.FACEBOOK_CONFIG_ID || "",
   instagramAppId: env.INSTAGRAM_APP_ID || "",
   instagramAppSecret: env.INSTAGRAM_APP_SECRET || "",
   metaWebhookVerifyToken: env.META_WEBHOOK_VERIFY_TOKEN || "",

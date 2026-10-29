@@ -1,8 +1,8 @@
-# PRD: IG Automatic Tools
+# PRD: Phanter Tools
 
 ## Nome e ideia
 
-IG Automatic Tools, um hub de ferramentas para criadores de conteúdo no Instagram.
+Phanter Tools, um hub de ferramentas para criadores de conteúdo no Instagram.
 
 ## Pra quem é e o que essa pessoa precisa
 
@@ -51,7 +51,7 @@ Conta do Instagram: profissional (Creator ou Business). A conexão usa o login d
 
 ## Como saber que deu certo
 
-O Rod passa 2 semanas sem abrir o app do Instagram para publicar, porque tudo sai agendado pelo IG Automatic Tools.
+O Rod passa 2 semanas sem abrir o app do Instagram para publicar, porque tudo sai agendado pelo Phanter Tools.
 
 ## Histórias de uso (todas na superfície web)
 

@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import { InstagramAccount, InstagramAccountDoc } from "../models/InstagramAccount";
+import { FacebookPage } from "../models/FacebookPage";
 import { ProfileAnalysis, ProfileAnalysisDoc } from "../models/ProfileAnalysis";
 import { decrypt } from "../lib/crypto";
 import { igApi, IgApiError, AnalysisSource } from "./instagramApi";
@@ -34,6 +35,9 @@ export function translateError(err: unknown): AnalysisError {
   if (e instanceof IgApiError) {
     if (e.tokenInvalid) return new AnalysisError("token", "O acesso do Facebook expirou. Conecte de novo.");
     if (e.code !== undefined && RATE_LIMIT_CODES.has(e.code)) return new AnalysisError("rate_limited", "Limite de consultas do Instagram atingido. Tente mais tarde.");
+    if (e.code === 10) {
+      return new AnalysisError("failed", "O login do Facebook não tem as permissões instagram_basic e instagram_manage_insights. Inclua-as na configuração do login no app da Meta e conecte o Facebook de novo.");
+    }
     if (e.code === 110 || e.code === 100 || e.subcode === 2207013) {
       return new AnalysisError("profile_unavailable", "Perfil não encontrado ou não é uma conta profissional (business ou creator).");
     }
@@ -43,6 +47,16 @@ export function translateError(err: unknown): AnalysisError {
 
 export function fbAccountOf(accounts: InstagramAccountDoc[]) {
   return accounts.find((a) => a.fbPageTokenEnc && a.fbIgUserId && !a.disconnectedAt);
+}
+
+// Ponto de partida do business_discovery: o Instagram do usuário ligado a uma Página; se a Meta não expõe esse vínculo,
+// qualquer Instagram ligado a outra Página do usuário serve (a consulta lê o perfil dos outros, não o do dono do token).
+export async function discoverySource(userId: Types.ObjectId | string, accounts?: InstagramAccountDoc[]): Promise<{ igUserId: string; token: string } | null> {
+  const own = fbAccountOf(accounts ?? (await InstagramAccount.find(activeAccountsFilter(userId))));
+  if (own) return { igUserId: own.fbIgUserId as string, token: decrypt(own.fbPageTokenEnc as { data: string; iv: string; tag: string }) };
+  const page = await FacebookPage.findOne({ userId, igUserId: { $exists: true, $ne: null } }).sort({ connectedAt: 1 });
+  if (!page?.igUserId) return null;
+  return { igUserId: page.igUserId, token: decrypt(page.tokenEnc as { data: string; iv: string; tag: string }) };
 }
 
 async function save(userId: Types.ObjectId | string, username: string, kind: "own" | "competitor" | "lookup", src: AnalysisSource): Promise<ProfileAnalysisDoc> {
@@ -94,12 +108,10 @@ export async function analyzeOther(
       return { doc: cached, cached: true };
     }
   }
-  const accounts = await InstagramAccount.find(activeAccountsFilter(userId));
-  const account = fbAccountOf(accounts);
-  if (!account) throw new AnalysisError("no_facebook", "Conecte o Facebook para consultar outros perfis.");
+  const source = await discoverySource(userId);
+  if (!source) throw new AnalysisError("no_facebook", "Conecte o Facebook para consultar outros perfis.");
   try {
-    const token = decrypt(account.fbPageTokenEnc as { data: string; iv: string; tag: string });
-    const src = await igApi.businessDiscovery(account.fbIgUserId as string, token, username);
+    const src = await igApi.businessDiscovery(source.igUserId, source.token, username);
     return { doc: await save(userId, username, kind, src), cached: false };
   } catch (err) {
     throw translateError(err);

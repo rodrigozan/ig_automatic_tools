@@ -47,3 +47,20 @@ test("painel é servido em /ig com retorno ao index.html", async () => {
   assert.equal(res.status, 200);
   assert.match(await res.text(), /<div id="root">/);
 });
+
+
+test("config pública usa o nome da API e expõe apenas esse campo", async () => {
+  const { config } = await import("../config");
+  const previous = config.appName;
+  try {
+    config.appName = "Nome configurado para teste";
+    for (const prefix of ["/ig/api", "/api"]) {
+      const res = await fetch(`${srv.url}${prefix}/config`);
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get("cache-control"), "no-store");
+      assert.deepEqual(await res.json(), { appName: config.appName });
+    }
+  } finally {
+    config.appName = previous;
+  }
+});

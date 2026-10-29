@@ -1,6 +1,14 @@
 {
-  "name": "ig-automatic-tools-api",
+  "name": "phanter-tools-api",
   "version": "1.0.0",
+   "scripts": {
+    "dev": "nodemon --watch src --ext ts --exec node -r ts-node/register src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "test": "node -r ts-node/register --test --test-concurrency=1 \"src/tests/**/*.test.ts\"",
+    "test:clean": "node -r ts-node/register src/scripts/cleanTestDb.ts",
+    "cancel-pending": "node -r ts-node/register src/scripts/cancelPending.ts"
+  },
   "dependencies": {
     "axios": "^1.20.0",
     "cookie-parser": "^1.4.7",
@@ -29,13 +37,5 @@
     "ts-node": "^10.9.2",
     "typescript": "^5"
   },
-  "private": true,
-  "scripts": {
-    "dev": "nodemon --watch src --ext ts --exec node -r ts-node/register src/server.ts",
-    "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/server.js",
-    "test": "node -r ts-node/register --test --test-concurrency=1 \"src/tests/**/*.test.ts\"",
-    "test:clean": "node -r ts-node/register src/scripts/cleanTestDb.ts",
-    "cancel-pending": "node -r ts-node/register src/scripts/cancelPending.ts"
-  }
+  "private": true
 }

@@ -12,7 +12,10 @@ import { InstagramAccount } from "../models/InstagramAccount";
 import { ProfileAnalysis, publicAnalysis } from "../models/ProfileAnalysis";
 import { igApi } from "../services/instagramApi";
 import { activeAccountsFilter, findUserAccount } from "../services/accounts";
-import { AnalysisError, LOOKUP_TTL_MS, REFRESH_MIN_MS, analyzeOther, analyzeOwn, fbAccountOf, normalizeUsername } from "../services/profileAnalysis";
+import { FacebookPage } from "../models/FacebookPage";
+import { PageAnalysis, publicPageAnalysis } from "../models/PageAnalysis";
+import { analyzeOwnPage, analyzePageCompetitor, normalizePageRef } from "../services/pageAnalysis";
+import { AnalysisError, LOOKUP_TTL_MS, REFRESH_MIN_MS, analyzeOther, analyzeOwn, discoverySource, normalizeUsername } from "../services/profileAnalysis";
 
 export const analysisRouter = Router();
 
@@ -50,7 +53,7 @@ analysisRouter.get("/analysis", requireAuth, async (req, res) => {
     })
   );
   res.json({
-    facebook: { configured: Boolean(config.facebookAppId && config.facebookAppSecret), connected: Boolean(fbAccountOf(accounts)) },
+    facebook: { configured: Boolean(config.facebookAppId && config.facebookAppSecret), connected: Boolean(await discoverySource(user._id, accounts)) },
     own,
     competitors: stored.filter((s) => s.kind === "competitor").map(publicAnalysis),
   });
@@ -72,6 +75,16 @@ analysisRouter.get("/analysis/facebook/callback", requireAuth, async (req, res) 
   if (!saved || saved.userId !== user.id || saved.state !== req.query.state || typeof req.query.code !== "string") return back(res, "erro=falha");
   try {
     const pages = await igApi.fbPages(req.query.code, fbCallback());
+    for (const p of pages) {
+      await FacebookPage.findOneAndUpdate(
+        { userId: user._id, pageId: p.pageId },
+        {
+          $set: { name: p.pageName, tokenEnc: encrypt(p.pageToken), connectedAt: new Date(), ...(p.igUserId ? { igUserId: p.igUserId, igUsername: p.igUsername } : {}) },
+          ...(p.igUserId ? {} : { $unset: { igUserId: "", igUsername: "" } }),
+        },
+        { upsert: true }
+      );
+    }
     const accounts = await InstagramAccount.find(activeAccountsFilter(user._id));
     let linked = 0;
     for (const account of accounts) {
@@ -86,7 +99,7 @@ analysisRouter.get("/analysis/facebook/callback", requireAuth, async (req, res) 
       await account.save();
       linked += 1;
     }
-    back(res, linked ? "conectado=1" : "erro=sem_pagina");
+    back(res, linked || pages.some((p) => p.igUserId) ? "conectado=1" : pages.length ? "conectado=paginas" : "erro=sem_pagina");
   } catch (err) {
     console.error("falha ao conectar o Facebook para a análise", (err as Error).message);
     back(res, "erro=falha");
@@ -149,4 +162,72 @@ analysisRouter.get("/analysis/lookup", analysisLimiter, requireAuthOrAnalysisAge
   } catch (err) {
     asHttp(err);
   }
+});
+
+// ---- Páginas do Facebook (segunda aba da tela) ----
+
+analysisRouter.get("/analysis/pages", requireAuth, async (req, res) => {
+  const user = currentUser(req);
+  const pages = await FacebookPage.find({ userId: user._id }).sort({ connectedAt: 1 });
+  const stored = await PageAnalysis.find({ userId: user._id }).sort({ createdAt: 1 });
+  const own = await Promise.all(
+    pages.map(async (p) => {
+      let doc = stored.find((s) => s.kind === "own" && s.pageId === p.pageId);
+      let error: string | null = null;
+      if (!doc) {
+        try {
+          doc = await analyzeOwnPage(user._id, p);
+        } catch (err) {
+          error = err instanceof AnalysisError ? err.message : "Não foi possível analisar esta Página agora.";
+        }
+      }
+      return { pageId: p.pageId, name: p.name, analysis: doc ? publicPageAnalysis(doc) : null, error };
+    })
+  );
+  res.json({
+    facebook: { configured: Boolean(config.facebookAppId && config.facebookAppSecret), connected: pages.length > 0 },
+    own,
+    competitors: stored.filter((s) => s.kind === "competitor").map(publicPageAnalysis),
+  });
+});
+
+analysisRouter.post("/analysis/pages/:pageId/refresh", requireAuth, async (req, res) => {
+  const user = currentUser(req);
+  const page = await FacebookPage.findOne({ userId: user._id, pageId: req.params.pageId });
+  if (!page) throw notFound("Página não encontrada.");
+  try {
+    res.json(publicPageAnalysis(await analyzeOwnPage(user._id, page)));
+  } catch (err) {
+    asHttp(err);
+  }
+});
+
+const pageAddSchema = z.object({ page: z.string().min(1, "Informe a Página.") }).strict();
+
+analysisRouter.post("/analysis/pages/competitors", requireAuth, async (req, res) => {
+  const user = currentUser(req);
+  const ref = normalizePageRef(parse(pageAddSchema, req.body).page);
+  if (!ref) throw badRequest("Página inválida.", { page: "Use o endereço da Página no Facebook ou o nome de usuário dela." });
+  try {
+    res.status(201).json(publicPageAnalysis(await analyzePageCompetitor(user._id, ref)));
+  } catch (err) {
+    asHttp(err);
+  }
+});
+
+analysisRouter.post("/analysis/pages/competitors/:id/refresh", requireAuth, async (req, res) => {
+  const user = currentUser(req);
+  const doc = await PageAnalysis.findOne({ _id: parse(objectId, req.params.id), userId: user._id, kind: "competitor" });
+  if (!doc) throw notFound("Página não encontrada.");
+  try {
+    res.json(publicPageAnalysis(await analyzePageCompetitor(user._id, doc.pageId)));
+  } catch (err) {
+    asHttp(err);
+  }
+});
+
+analysisRouter.delete("/analysis/pages/competitors/:id", requireAuth, async (req, res) => {
+  const r = await PageAnalysis.deleteOne({ _id: parse(objectId, req.params.id), userId: currentUser(req)._id, kind: "competitor" });
+  if (!r.deletedCount) throw notFound("Página não encontrada.");
+  res.sendStatus(204);
 });
